@@ -100,9 +100,11 @@ The board's USB-C carries **data only**. Servo power comes from the separate
 See `docs/wiring_diagram_v2.png`. Debug outward from the battery, not inward
 from the software.
 
-#### Motor progress
-- [x] `10` right_hip_yaw
-- [ ] `11` right_hip_roll · `12` right_hip_pitch · `13` right_knee · `14` right_ankle
-- [ ] `20`–`24` left leg
-- [ ] `30`–`33` neck + head
+#### Motor progress — 5 / 14
+- [x] **right leg** — `10` hip_yaw · `11` hip_roll · `12` hip_pitch · `13` knee · `14` ankle
+- [ ] **left leg** — `20` hip_yaw · `21` hip_roll · `22` hip_pitch · `23` knee · `24` ankle
+- [ ] **neck + head** — `30` neck_pitch · `31` head_pitch · `32` head_yaw · `33` head_roll
+
+Every motor probed clean at id 1 with factory defaults before its write. Pack
+held 7.2–7.3V throughout (floor is 4.0V).
 
