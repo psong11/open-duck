@@ -43,6 +43,17 @@ echo "==> $want  ->  id $id   (port $PORT)"
 .venv/bin/python vendor/Open_Duck_Mini_Runtime/scripts/configure_motor.py \
     --id "$id" --port "$PORT"
 
+# Verify over a fresh connection. configure_motor.py's own readback happens in
+# the same session and has been observed to pass while a write was silently
+# dropped (id 30, max_acceleration stuck at 50).
+echo
+echo "--- verifying (fresh connection) ---"
+if ! .venv/bin/python scripts/verify_motor.py --id "$id" --port "$PORT"; then
+  echo
+  echo "!! NOT configured correctly. Re-run:  $0 $want"
+  exit 1
+fi
+
 echo
 echo "Motor is holding zero under torque."
 echo "  1. install the horn now, while powered"
