@@ -1,0 +1,17 @@
+# upstream repos are cloned here, not committed
+vendor/*
+!vendor/.gitkeep
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# training artifacts
+recordings/
+logs/
+*.pkl
+
+# os
+.DS_Store
