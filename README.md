@@ -65,3 +65,20 @@ NOTES.md    the dense technical reference. Versions, platform traps,
 ### 2026-08-14 — day zero
 Repo created. Kit in hand, nothing assembled yet.
 
+Phase 0 toolchain up on the Mac:
+- `uv` installed (`~/.local/bin`), fetched CPython **3.11.16** into `.venv`
+- `vendor/Open_Duck_Mini_Runtime` cloned at branch `v2`, commit `3203734`
+- `pypot` 5.0.2 (pollen-robotics `support-feetech-sts3215` branch) installed;
+  `from pypot.feetech import FeetechSTS3215IO` imports clean on Apple Silicon
+
+Only `pypot` is installed, not the full runtime — the runtime pins
+`onnxruntime==1.18.1`, which has no macOS arm64 wheel. Motor config doesn't
+need it. Full runtime install happens on the Pi.
+
+**Motor config command** (one motor on the bus at a time):
+```bash
+cd ~/Documents/personal_projects/open-duck
+.venv/bin/python vendor/Open_Duck_Mini_Runtime/scripts/configure_motor.py \
+    --id <id> --port <port>
+```
+
