@@ -75,10 +75,34 @@ Only `pypot` is installed, not the full runtime — the runtime pins
 `onnxruntime==1.18.1`, which has no macOS arm64 wheel. Motor config doesn't
 need it. Full runtime install happens on the Pi.
 
-**Motor config command** (one motor on the bus at a time):
+**Hardware confirmed:** servo board is a WCH CH343 (VID `0x1A86`), enumerates
+natively on macOS — no vendor driver. Port is `/dev/cu.usbmodem5B901489761`.
+Use the `cu.` path, never `tty.`: on macOS `tty.` blocks on open waiting for a
+carrier signal a servo board never sends.
+
+**Motor config** — one motor on the bus at a time (unconfigured motors all
+answer to id 1, so two at once talk over each other):
+
 ```bash
-cd ~/Documents/personal_projects/open-duck
-.venv/bin/python vendor/Open_Duck_Mini_Runtime/scripts/configure_motor.py \
-    --id <id> --port <port>
+./scripts/name_motor.sh right_hip_yaw   # joint name -> id, then configure
+./scripts/name_motor.sh --list          # show all 14
+./scripts/probe_bus.py                  # read-only: who's on the bus, at what voltage
 ```
+
+#### First-light debugging (worth remembering)
+Motor was silent at every baud rate and every address. Cause: **one 18650 not
+seated against its contact.** The servo bus is 3 wires — V+, GND, signal — with
+no separate logic supply, so an unpowered bus means a dead MCU and total
+silence, not a degraded response.
+
+The board's USB-C carries **data only**. Servo power comes from the separate
+7.4V DC input, fed from the pack through the BMS and the inline power switch.
+See `docs/wiring_diagram_v2.png`. Debug outward from the battery, not inward
+from the software.
+
+#### Motor progress
+- [x] `10` right_hip_yaw
+- [ ] `11` right_hip_roll · `12` right_hip_pitch · `13` right_knee · `14` right_ankle
+- [ ] `20`–`24` left leg
+- [ ] `30`–`33` neck + head
 

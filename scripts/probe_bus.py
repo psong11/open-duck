@@ -50,11 +50,17 @@ for i in found:
         except Exception as e:
             return f"<err: {type(e).__name__}>"
 
+    def volts(fn):
+        # Feetech voltage registers are in tenths of a volt, and pypot does
+        # not convert them. 73 means 7.3V.
+        v = safe(fn)
+        return f"{v / 10:.1f} V" if isinstance(v, (int, float)) else v
+
     print(f"--- id {i} ---")
     print(f"  model            {safe(io.get_model)}")
-    print(f"  present voltage  {safe(io.get_present_voltage)} V   <-- power check")
-    print(f"  min voltage lim  {safe(io.get_min_voltage_limit)} V")
-    print(f"  max voltage lim  {safe(io.get_max_voltage_limit)} V")
+    print(f"  present voltage  {volts(io.get_present_voltage)}   <-- power check")
+    print(f"  min voltage lim  {volts(io.get_min_voltage_limit)}")
+    print(f"  max voltage lim  {volts(io.get_max_voltage_limit)}")
     print(f"  temperature      {safe(io.get_present_temperature)} C")
     print(f"  position         {safe(io.get_present_position)}")
     print(f"  mode             {safe(io.get_mode)}")
