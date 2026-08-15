@@ -33,8 +33,8 @@ The duck walks.
 
 | Phase | What happens | Status |
 |---|---|---|
-| **0. Wake the motors** | Each of the 14 servos gets a numbered identity before anything is assembled | ← here |
-| **1. Give it a body** | Assembly. Wiring, Loctite, calibration | |
+| **0. Wake the motors** | Each of the 14 servos gets a numbered identity before anything is assembled | ✅ done |
+| **1. Give it a body** | Assembly. Wiring, Loctite, calibration | ← here |
 | **2. Borrowed brain** | Drop in the community's pretrained policy. It walks | |
 | **3. Its own brain** | Build the school. Train a policy myself. Sim-to-real | |
 | **4. Personality** | Eyes, speaker, mic, camera, antennas | |
@@ -100,10 +100,17 @@ The board's USB-C carries **data only**. Servo power comes from the separate
 See `docs/wiring_diagram_v2.png`. Debug outward from the battery, not inward
 from the software.
 
-#### Motor progress — 10 / 14
+#### Motor progress — 14 / 14 ✅
 - [x] **right leg** — `10` hip_yaw · `11` hip_roll · `12` hip_pitch · `13` knee · `14` ankle
 - [x] **left leg** — `20` hip_yaw · `21` hip_roll · `22` hip_pitch · `23` knee · `24` ankle
-- [ ] **neck + head** — `30` neck_pitch · `31` head_pitch · `32` head_yaw · `33` head_roll
+- [x] **neck + head** — `30` neck_pitch · `31` head_pitch · `32` head_yaw · `33` head_roll
+
+Every motor probed clean at id 1 before its write and verified over a fresh
+connection after. Pack held 7.2–7.3V throughout (floor is 4.0V).
+
+**Deferred:** `scripts/verify_all.py` — the all-14-on-the-bus sweep. Its real
+job is catching duplicate IDs, and the per-motor probes make that very unlikely.
+Run it during Phase 1 when the daisy chain exists anyway.
 
 Every motor probed clean at id 1 with factory defaults before its write. Pack
 held 7.2–7.3V throughout (floor is 4.0V).

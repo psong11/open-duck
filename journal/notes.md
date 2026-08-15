@@ -36,6 +36,24 @@ cause instead of the physical one. Debug outward from power.
 a question. Then it took the name `10`, drove itself to zero, and held there
 waiting for a horn.
 
+**moment.** All fourteen named in one sitting. `10` through `14`, `20` through
+`24`, `30` through `33`. A pile of identical black servos became a right leg, a
+left leg, and a head — entirely because of masking tape and a number written in
+EEPROM. Nothing about them changed physically. They're just *addressable* now.
+
+**note.** Motor 11-of-14 (`neck_pitch`, id 30) reported success while one
+register — `max_acceleration` — silently stayed at the factory 50 instead of 0.
+It only surfaced because the number looked different from the ten before it.
+
+The root cause of the *class* of bug: `configure_motor.py` reads its own writes
+back within the same connection, which proves nothing about whether they landed
+in EEPROM. So we added `verify_motor.py`, which reconnects and checks. The
+remaining three self-verified.
+
+Worth keeping: the fix wasn't "be more careful reading output." It was making
+the machine check, because at motor eleven of fourteen I would eventually stop
+looking.
+
 **note.** I pushed back on being told I needed the battery pack connected —
 it felt like an assumption rather than something checked. It turned out to be
 correct, but it *was* unsourced when first said. Asking for grounding produced
