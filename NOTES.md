@@ -134,6 +134,30 @@ ID 1, so it handles already-configured motors too.
 - Left/right leg parts are true mirrors — not interchangeable.
 - `foot_bottom_tpu.stl` in TPU at 40% infill for grip. Everything else PLA 15%.
 
+### Servo board (Waveshare Bus Servo Adapter A) — verified facts
+
+**It has NO 5V output.** Waveshare's wiring docs: *"The Raspberry Pi must be
+powered separately... the adapter acts as a power pass-through rather than a
+voltage regulator."* It passes the 7.4V input straight to the servo bus.
+
+> ⚠️ TNKR's assembly Step 3 table says "Servo driver board 5V → Raspberry Pi
+> 5V". **That pin does not exist.** Power the Pi from the UBEC (the "5V
+> Regulator" in the BOM) fed off the 7.4V rail, per
+> `docs/wiring_diagram_v2.png`. When TNKR and the upstream diagram disagree,
+> trust the diagram.
+
+**Control mode jumper** — must be moved when the Pi takes over:
+
+| Position | Mode | For |
+|---|---|---|
+| B | USB control | Mac / Pi 4B / Jetson |
+| A | UART control | **Pi Zero 2W** |
+
+UART wiring is **RX→RX and TX→TX**, *not* crossed.
+
+Rows 1–6 of TNKR's Step 3 table (cells → BMS → switch → board V+/GND) are
+correct and were proven working on 2026-08-14.
+
 ### Calibration — back this up
 `duck_config.json` lives in `$HOME` on the Pi, generated with help from
 `scripts/find_soft_offsets.py`. It holds your duck's specific joint offsets.
