@@ -54,6 +54,31 @@ Worth keeping: the fix wasn't "be more careful reading output." It was making
 the machine check, because at motor eleven of fourteen I would eventually stop
 looking.
 
+---
+
+## 2026-08-15 — heft
+
+**moment.** Building feet, ankles, knees, thighs, hips. Fun build. But the
+thing I keep noticing is the *weight*. So much heft and bulk behind a robot
+this small.
+
+New respect for good physical design — servos well integrated, wires routed
+properly, pieces modular enough that a broken part can actually be replaced.
+Good physical design is more impressive to me right now than good software
+design. Maybe I'm just jaded by software.
+
+**note.** People don't appreciate how heavy a real humanoid is going to be.
+It's basically straight metal. Not a light agile thing. And the force and
+momentum available from the servos *plus* the mass of the body is remarkable.
+
+*(The physics behind that instinct: mass scales with volume, L³. Actuator
+torque scales roughly with cross-section, L². Double a robot's height and it
+gets ~8× heavier but only ~4× stronger. That's the square-cube law, and it's
+exactly why humanoids are so heavy and why a 42cm duck is feasible at all —
+at this scale the law is on my side.)*
+
+---
+
 **note.** I pushed back on being told I needed the battery pack connected —
 it felt like an assumption rather than something checked. It turned out to be
 correct, but it *was* unsourced when first said. Asking for grounding produced
