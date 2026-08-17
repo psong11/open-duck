@@ -180,16 +180,38 @@ expected voltage, not by `B±`/`BM`. See `docs/bms_pinout_annotated.png`.
 | `P+` | `(+)` round pad | 7.4V out → robot |
 | `P−` | `(−)` round pad | → power switch |
 
-Solder the taps **`0V` → `4.2V` → `8.4V`, in that order** (standard BMS
-practice; out-of-order can reverse-bias the protection IC). `FD`/`CD` unused.
-Verify each cell reads 3.6–4.2V and the pair are within ~0.1V of each other
-before connecting the output.
+Pad mapping confirmed by two independent sources (HW-391 troubleshooting guide
++ product docs), not just by reading the silkscreen.
 
-**Switch polarity:** the upstream diagram puts the power switch on the **`P−`
-(negative)** leg. TNKR's table puts it on `P+`. Both work. But low-side
-switching means *switch-off does not fully isolate if another ground path
-exists* — and the servo board's USB cable to the Mac is exactly such a path.
-Unplug USB when you want the robot truly dead.
+Solder the taps `0V` → `4.2V` → `8.4V`. **Caveat: no datasheet I found
+specifies a required order** — this is hobby convention, not a verified spec.
+It costs nothing, so do it, but don't repeat it as fact.
+
+`FD`/`CD`: **unknown.** No source describes them. Unused here.
+
+Verify each cell reads 3.6–4.2V and the pair are within ~0.1V before connecting
+the output.
+
+> ⚠️ **0V at `(+)`/`(−)` is a real fault signature, not a quirk.** Documented
+> cause: a cell inserted backwards in the holder makes the BMS shut down
+> entirely. Check cell orientation first. (Some BMS designs do latch off until
+> first charge — no evidence that applies to this board.)
+
+**Switch polarity — unresolved.** Reading the upstream diagram, the power
+switch sits on the **`P−` (negative)** leg. TNKR's table puts it on `P+`. The
+sources genuinely disagree and it's not clear which the designer intended.
+Functionally either works — breaking either leg opens the circuit.
+
+One real consequence if it is on `P−`: low-side switching means *switch-off
+does not fully isolate if another ground path exists* — and the servo board's
+USB cable to the Mac is exactly such a path. Unplug USB when you want the robot
+truly dead.
+
+### Claims in this file that are inference, not verification
+- Trunk's "middle motor" identified as `30` neck_pitch — read off a CAD render,
+  never confirmed. Check: its axis should be horizontal, left-to-right.
+- Thigh `hip_pitch` mount orientation — **not determined.** Use the Onshape CAD.
+  Physical invariant: at motor zero the whole leg stands dead straight.
 
 ### Calibration — back this up
 `duck_config.json` lives in `$HOME` on the Pi, generated with help from
