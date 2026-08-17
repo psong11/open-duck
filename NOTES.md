@@ -169,6 +169,22 @@ safety function, plus it enables balancing.
 `B+/B−/BM` = raw cells, always live. `P+/P−` = protected output; the BMS opens
 it on a fault. Everything downstream hangs off `P`.
 
+**The actual BMS in this build is an HW-391 2S 20A.** It labels pads by
+expected voltage, not by `B±`/`BM`. See `docs/bms_pinout_annotated.png`.
+
+| Diagram | HW-391 pad | Connect to |
+|---|---|---|
+| `B−` | `0V` | cell 1 negative |
+| `BM` | `4.2V` | **between the two cells** |
+| `B+` | `8.4V` | cell 2 positive |
+| `P+` | `(+)` round pad | 7.4V out → robot |
+| `P−` | `(−)` round pad | → power switch |
+
+Solder the taps **`0V` → `4.2V` → `8.4V`, in that order** (standard BMS
+practice; out-of-order can reverse-bias the protection IC). `FD`/`CD` unused.
+Verify each cell reads 3.6–4.2V and the pair are within ~0.1V of each other
+before connecting the output.
+
 **Switch polarity:** the upstream diagram puts the power switch on the **`P−`
 (negative)** leg. TNKR's table puts it on `P+`. Both work. But low-side
 switching means *switch-off does not fully isolate if another ground path
