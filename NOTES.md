@@ -158,6 +158,23 @@ UART wiring is **RX→RX and TX→TX**, *not* crossed.
 Rows 1–6 of TNKR's Step 3 table (cells → BMS → switch → board V+/GND) are
 correct and were proven working on 2026-08-14.
 
+### Battery pack wiring
+
+`BM` is the **midpoint tap** — a wire to the metal junction where cell 1's `+`
+meets cell 2's `−`. Without it the BMS sees only the 7.4V pack total and cannot
+distinguish a healthy `3.7+3.7` from a dangerous `4.2+3.2`. With it:
+`cell2 = B+ − BM`, `cell1 = BM − B−`. That per-cell visibility is the whole
+safety function, plus it enables balancing.
+
+`B+/B−/BM` = raw cells, always live. `P+/P−` = protected output; the BMS opens
+it on a fault. Everything downstream hangs off `P`.
+
+**Switch polarity:** the upstream diagram puts the power switch on the **`P−`
+(negative)** leg. TNKR's table puts it on `P+`. Both work. But low-side
+switching means *switch-off does not fully isolate if another ground path
+exists* — and the servo board's USB cable to the Mac is exactly such a path.
+Unplug USB when you want the robot truly dead.
+
 ### Calibration — back this up
 `duck_config.json` lives in `$HOME` on the Pi, generated with help from
 `scripts/find_soft_offsets.py`. It holds your duck's specific joint offsets.
