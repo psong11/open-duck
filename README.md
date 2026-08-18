@@ -14,7 +14,7 @@ Three things, and one file that connects them.
 **The body** — printed shell, 14 Feetech STS3215 servo motors, a tilt sensor.
 Assembled by hand.
 
-**The brain** — a Raspberry Pi Zero 2W in its chest. Many times a second it asks
+**The brain** — a Raspberry Pi Zero 2W in its head. Many times a second it asks
 *"where are my joints, which way am I tilted?"* and answers *"put the joints
 here."* It does not plan. It reacts.
 
