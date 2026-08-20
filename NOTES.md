@@ -213,6 +213,26 @@ truly dead.
 - Thigh `hip_pitch` mount orientation — **not determined.** Use the Onshape CAD.
   Physical invariant: at motor zero the whole leg stands dead straight.
 
+### The Pi (brain)
+
+| | |
+|---|---|
+| MAC | `88:a2:9e:58:00:d7` (OUI `88:A2:9E` = Raspberry Pi Trading) |
+| OS | Debian 13 trixie — `OpenSSH_10.0p2 Debian-7+deb13u4` |
+| SSH | enabled out of the box (Imager) |
+| Found at | `172.20.154.205` on 2026-08-18 — **DHCP, will move** |
+
+Joined the hidden SSID `A-510` on first boot; the Imager "Hidden SSID" checkbox
+was the thing that made that work.
+
+**Finding it:** `./scripts/find_duck.sh` (or `--ssh`). mDNS/`.local` does **not**
+resolve on this router, and the IP is a DHCP lease, so the MAC is the only
+stable identity.
+
+> ⚠️ **ARP entries go stale for ~20 min after a device drops.** A host listed in
+> `arp -an` is not proof it is alive — this fooled me once. Always ping to
+> confirm. `find_duck.sh` does this for you.
+
 ### Calibration — back this up
 `duck_config.json` lives in `$HOME` on the Pi, generated with help from
 `scripts/find_soft_offsets.py`. It holds your duck's specific joint offsets.
