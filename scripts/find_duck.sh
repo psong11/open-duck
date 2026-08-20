@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Locate the duck's Raspberry Pi Zero 2W on the LAN by MAC address.
 #
-# Why not hostname? mDNS (.local) does not resolve on this router.
+# Normally just use: ssh paul@ezer.local  (mDNS works)
+# This exists for when mDNS is flaky or the Pi is on an unfamiliar subnet.
 # Why not a fixed IP? DHCP moves it. The MAC is the only stable identity.
 #
 #   ./scripts/find_duck.sh          # print the IP

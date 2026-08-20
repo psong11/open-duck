@@ -225,9 +225,13 @@ truly dead.
 Joined the hidden SSID `A-510` on first boot; the Imager "Hidden SSID" checkbox
 was the thing that made that work.
 
-**Finding it:** `./scripts/find_duck.sh` (or `--ssh`). mDNS/`.local` does **not**
-resolve on this router, and the IP is a DHCP lease, so the MAC is the only
-stable identity.
+**Reaching it:** `ssh paul@ezer.local` — **mDNS works fine.** (An earlier note
+here claimed it didn't; that was wrong. `raspberrypi.local` failed only because
+the hostname is `ezer`.) Key auth is already set up from the Mac's
+`id_ed25519`.
+
+`./scripts/find_duck.sh` remains the fallback for when mDNS is flaky or the
+host is on a foreign subnet — it matches by MAC and pings to confirm.
 
 > ⚠️ **ARP entries go stale for ~20 min after a device drops.** A host listed in
 > `arp -an` is not proof it is alive — this fooled me once. Always ping to
