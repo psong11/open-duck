@@ -146,14 +146,29 @@ voltage regulator."* It passes the 7.4V input straight to the servo bus.
 > `docs/wiring_diagram_v2.png`. When TNKR and the upstream diagram disagree,
 > trust the diagram.
 
-**Control mode jumper** — must be moved when the Pi takes over:
+**Control mode jumper — leave it on B (USB).**
 
-| Position | Mode | For |
-|---|---|---|
-| B | USB control | Mac / Pi 4B / Jetson |
-| A | UART control | **Pi Zero 2W** |
+> ⚠️ An earlier version of this note said to move it to A (UART) for the Pi
+> Zero. **That was wrong.** Waveshare's docs list "RPi Zero" under UART mode,
+> but this build does not follow that advice.
 
-UART wiring is **RX→RX and TX→TX**, *not* crossed.
+Evidence this build is USB: the runtime hardcodes **`/dev/ttyACM0`** — a USB
+CDC-ACM device (the CH343) — in `rustypot_position_hwi.py`,
+`v2_rl_walk_mujoco.py`, `configure_motor.py` and every script. A UART path
+would be `/dev/serial0` or `/dev/ttyAMA0`. The wiring diagram also draws a
+line from a Pi micro-USB to the board's usb-c.
+
+**The Pi Zero 2W has two micro-USB ports and they are not interchangeable:**
+
+| Port | Purpose |
+|---|---|
+| `USB` (nearer the mini-HDMI) | **data / OTG — the servo board goes here** |
+| `PWR IN` (outer end) | power only, no data lines |
+
+Plugging the servo board into `PWR IN` gives no data path *and* creates a
+supply conflict with the UBEC feeding 5V on the GPIO header. Observed
+2026-08-18: with USB connected the Pi would not boot at all (ACT LED rock
+steady); unplugging it let the Pi boot.
 
 Rows 1–6 of TNKR's Step 3 table (cells → BMS → switch → board V+/GND) are
 correct and were proven working on 2026-08-14.
