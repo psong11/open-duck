@@ -399,3 +399,32 @@ image as shipped. trixie has no `python3.11` package, and the image ships no
    numpy 2.x's breaking changes against code written for 1.26.
 3. **Reflash to Bookworm**, which ships Python 3.11 natively.
 
+
+### Power-cut test, 2026-08-24 — the card survived
+
+Battery switched off with no shutdown, 30s off, back on. Result: **no damage.**
+
+| check | result |
+|---|---|
+| ext4 errors / I/O errors | none beyond routine orphan cleanup |
+| root filesystem | stayed read-write |
+| failed units | none |
+| undervoltage (`thr`) | `0x0` throughout |
+| wifi associated at | `up=43s` — **identical to a clean reboot** |
+
+The recorder caught the cut correctly: a `### boot mark` with no `### CLEAN
+STOP` before it.
+
+**Baseline worth keeping: wifi associates at `up=43s`.** Any check that gives
+up sooner than that is measuring its own impatience, not the Pi.
+
+**Careful with `ts=`.** The Pi Zero 2W has no RTC, so the clock is wrong until
+NTP syncs — which is why a new boot's mark can appear to *precede* the previous
+boot's last sample. Reason with `up=`, which is monotonic from boot.
+
+One cut is not proof. The historical failures happened while the UBEC was
+hiccuping, i.e. possibly many rapid cuts, and plausibly during writes rather
+than at idle. It is also entirely possible the old failures were caused by the
+bad barrel-jack ground rather than by filesystem damage at all — that fault is
+now fixed, and this card has not misbehaved since.
+
