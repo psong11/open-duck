@@ -472,3 +472,31 @@ ground fault — already found and resoldered.
 SD wear baseline for later comparison: `Lifetime writes: 2943 MB`,
 `Mount count: 6`.
 
+
+### Hot-plugging the barrel jack kills the Pi (2026-08-24)
+
+With everything running, plugging the DC barrel jack into the servo board took
+the Pi down instantly.
+
+**Mechanism.** The servo board's bulk capacitance is discharged. Connecting it
+to a live pack is a near short-circuit for a few milliseconds. The pack sags
+hard — measured 6.56V → ~3V doing exactly this — the UBEC falls below its
+dropout, and its 5V output disappears. The Pi does not brown out; it simply
+loses power.
+
+**`thr` cannot see this.** All 97 samples read `thr=0x0`, including the last
+one before death. `vcgencmd get_throttled` reports the SoC's own voltage
+monitor, which needs the SoC to still be *running* at a degraded voltage to
+latch anything. A rail that collapses outright leaves no trace. The event was
+caught instead by a `### boot mark` with no `### CLEAN STOP` before it, and
+corroborated by `temp=45.6` at `up=12` — warm silicon means a restart, not a
+cold boot.
+
+**Working rule: sequence matters.** Plug the barrel jack in with the power
+switch **OFF**, then switch on, so the inrush happens once while nothing is
+running. Never hot-plug it into a live system.
+
+**Real fixes, if hot-plug ever has to be safe:** an NTC inrush limiter in
+series with the servo board's supply, or enough bulk capacitance on the UBEC
+input to ride through the sag. Not needed if the sequence is respected.
+
