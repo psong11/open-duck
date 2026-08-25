@@ -428,3 +428,47 @@ than at idle. It is also entirely possible the old failures were caused by the
 bad barrel-jack ground rather than by filesystem damage at all — that fault is
 now fixed, and this card has not misbehaved since.
 
+
+### Second power-cut test — cut *during boot*, mid-write
+
+Off → on after 10s → **off again while the ACT LED was still flashing** → on.
+A cut during boot writes, which is the harsh case. Survived. Wifi back at
+`up=43s`, the same baseline as a clean reboot.
+
+What the cuts actually damaged:
+
+| filesystem | result |
+|---|---|
+| root (ext4 p2) | `Filesystem state: clean`, no I/O errors, orphan cleanup only |
+| boot (FAT p1) | dirty bit set + 1 byte differing from the boot-sector backup — `fsck.fat` calls it *"mostly harmless"*, and `systemd-fsck` clears it at each boot |
+| systemd journal | `system.journal corrupted or uncleanly shut down, renaming and replacing` |
+
+The journal is the real casualty, and it is the one that matters for
+diagnosis: an unclean cut can destroy the previous boot's log, which is
+exactly what `bootsnap` reads. **`journal-tail.txt` on the FAT partition is
+what covers that gap** — it is refreshed every 60s and survived both cuts.
+
+All black box files survived intact: `boot-001..004`, `journal-tail.txt`,
+`state.log`.
+
+#### The PARTUUID changes on first boot — this is normal
+
+The card was flashed with `root=PARTUUID=041bba91-02`; it now runs
+`0fc26a91-02`. Not corruption. Raspberry Pi's first-boot resize **regenerates
+the partition table**, which changes the MBR disk signature, then rewrites
+`cmdline.txt` and `/etc/fstab` to match. Verified: `fdisk` reports
+`Disk identifier: 0x0fc26a91` and both files agree.
+
+Do not use a PARTUUID read off a freshly flashed card to diagnose a card that
+has since booted.
+
+#### Conclusion
+
+Two abrupt cuts, one of them mid-write, produced no meaningful corruption.
+The "it only works right after a reflash" pattern is therefore **not**
+explained by power-cut damage. The likelier culprit remains the barrel-jack
+ground fault — already found and resoldered.
+
+SD wear baseline for later comparison: `Lifetime writes: 2943 MB`,
+`Mount count: 6`.
+
