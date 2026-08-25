@@ -15,6 +15,30 @@ MAXLINES=8000
 
 mkdir -p "$BB" 2>/dev/null
 
+JT="$BB/journal-tail.txt"
+
+dump_journal() {
+  # The journal itself lives on ext4, which macOS cannot read. Without this,
+  # a Pi that never finishes booting takes its own explanation with it.
+  # Written to a temp file and renamed so a power cut mid-write cannot leave
+  # a truncated file where a good one used to be.
+  {
+    echo "=== journal tail @ $(date -u +%Y-%m-%dT%H:%M:%SZ) up=$(cut -d. -f1 /proc/uptime) ==="
+    echo
+    echo "--- failed units ---"
+    systemctl --failed --no-pager --no-legend 2>/dev/null
+    echo
+    echo "--- this boot: warnings and errors (last 150) ---"
+    journalctl -b 0 -p warning --no-pager -n 150 2>/dev/null
+    echo
+    echo "--- this boot: NetworkManager (last 80) ---"
+    journalctl -b 0 -u NetworkManager --no-pager -n 80 2>/dev/null
+    echo
+    echo "--- kernel: storage and wifi (last 60) ---"
+    dmesg 2>/dev/null | grep -iE "EXT4|mmc|sdhci|I/O error|brcmfmac|cfg80211" | tail -60
+  } > "$JT.tmp" 2>&1 && mv "$JT.tmp" "$JT" && sync
+}
+
 emit() { printf '%s\n' "$1" >> "$LOG"; sync; }
 
 field() { # field <name> <value-or-empty>
@@ -70,12 +94,21 @@ trim() {
 case "${1:-run}" in
   run)
     emit "### boot mark $(date -u +%Y-%m-%dT%H:%M:%SZ) kernel=$(uname -r)"
-    while true; do sample; trim; sleep "$INTERVAL"; done
+    i=0
+    while true; do
+      sample; trim
+      # Every 4th pass (~60s). A hard power cut therefore loses at most one
+      # minute of journal, instead of all of it.
+      i=$((i + 1))
+      [ $((i % 4)) -eq 1 ] && dump_journal
+      sleep "$INTERVAL"
+    done
     ;;
   stop)
     # Only reached on an orderly shutdown. If a boot section has no CLEAN
     # STOP at its end, that boot was killed by a power cut -- which is the
     # difference between a software bug and an electrical one.
+    dump_journal
     emit "### CLEAN STOP $(date -u +%Y-%m-%dT%H:%M:%SZ) up=$(cut -d. -f1 /proc/uptime)"
     ;;
 esac
