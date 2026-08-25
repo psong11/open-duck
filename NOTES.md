@@ -287,3 +287,71 @@ LB (hold) = sprint · Y = head control (*known to break heads, avoid*)
 - TNKR build guide (43 steps, 3D viewer): https://tnkr.ai/explore/docs/open-duck-mini/open-duck-mini-v2
 - BOM: https://docs.google.com/spreadsheets/d/1gq4iWWHEJVgAA_eemkTEsshXqrYlFxXAPwO515KpCJc
 - CAD (Onshape): https://cad.onshape.com/documents/64074dfcfa379b37d8a47762
+
+---
+
+## The black box (instrumenting the Pi before first boot)
+
+**Why this exists.** Three separate times the Pi went dark and the only tools
+available were `ping`, `arp`, and an LED. Every one of those returns a single
+bit — *is it there* — and none of them says *why not*. Debugging a machine over
+the network it has stopped joining is not debugging.
+
+The boot partition is FAT32. Any computer can read it. So the Pi records its
+own state there, and diagnosis becomes: pull the card, run one script.
+
+### Install (fresh flash, before first boot)
+
+```bash
+./scripts/instrument_sd.sh      # card mounted at /Volumes/bootfs
+diskutil eject /Volumes/bootfs
+```
+
+It refuses to run on a card that has already booted, because cloud-init only
+applies `user-data` once — keyed on the `instance-id` in `meta-data`. On a
+card that has booted, nothing would be installed and the script would lie
+about success.
+
+It **merges** into Imager's `user-data` rather than replacing it: hostname,
+user, password hash, SSH key, and wifi config all survive.
+
+### Read (after any failure)
+
+```bash
+./scripts/read_blackbox.sh          # summary
+./scripts/read_blackbox.sh --dump   # copy the whole thing off the card
+```
+
+### What gets installed
+
+| Path on the Pi | Job |
+|---|---|
+| `/usr/local/bin/blackbox.sh` | one state line every 15s → `/boot/firmware/blackbox/state.log` |
+| `/usr/local/bin/bootsnap.sh` | per-boot forensic dump → `boot-NNN.txt`, keeps last 6 |
+| `blackbox.service` | starts at `sysinit.target`, before networking, so it survives a boot that never reaches `multi-user.target` |
+| `bootsnap.service` | waits 75s, then photographs a boot that has finished trying |
+| `journald.conf.d/persistent.conf` | **the key one** — without persistent journald, the log explaining why the last boot died is erased by the boot that comes asking |
+| `usb0.nmconnection` | USB gadget ethernet on link-local; a second way in that does not involve wifi |
+
+### Reading the state line
+
+```
+ts=… up=… thr=0x0 temp=44.1 wlan=up ip4=172.20.154.205/24 assoc=yes ssid=A-510 rssi=-51 nm=connected rfkill=no load=0.9 rw=rw
+```
+
+- `thr` — `vcgencmd get_throttled`. Bit 0 = undervoltage **now**, bit 16 =
+  undervoltage **has occurred**. Given the UBEC hiccup history this is the
+  single most important field on the line.
+- `assoc` vs `ip4` — separates *never joined the network* from *joined but got
+  no lease*. Completely different bugs, and `ping` cannot tell them apart.
+- `rw=ro` — root remounted read-only. ext4 does that when it hits an error.
+  That is the corruption signature we would expect from repeated hard power cuts.
+- `### boot mark` with no `### CLEAN STOP` after it — the Pi was **killed**,
+  not shut down. This is how we tell an electrical failure from a software one.
+
+### Deliberate limitation
+
+`bootsnap` writes at 75s. A failure that kills the Pi before then leaves only
+`state.log`, which is append-and-`sync` and therefore survives. That trade is
+intentional: append is the safest FAT operation under sudden power loss.
+
