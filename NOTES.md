@@ -355,3 +355,47 @@ ts=… up=… thr=0x0 temp=44.1 wlan=up ip4=172.20.154.205/24 assoc=yes ssid=A-5
 `state.log`, which is append-and-`sync` and therefore survives. That trade is
 intentional: append is the safest FAT operation under sudden power loss.
 
+
+### Verified on the 2026-08-24 flash
+
+Pi OS **trixie**, kernel `6.18.34+rpt-rpi-v8`, aarch64, **Python 3.13.5**.
+`ezer` at `172.20.154.205`, associated to `A-510` at `rssi=-35`, `thr=0x0`.
+
+Two install-time quirks, both self-correcting on the second boot, worth knowing
+so they are not mistaken for failures:
+
+1. **journald is still volatile on the install boot.** cloud-init writes the
+   drop-in *after* journald has already started, so the first boot logs to
+   `/run/log/journal` (RAM). `/var/log/journal` exists by then, so the next
+   boot is persistent. Verified: `journalctl --list-boots` shows `IDX -1`
+   after one reboot.
+2. **`bootsnap` does not run on the install boot.** cloud-init enables it after
+   `multi-user.target` has already been reached, so it first fires on boot #2.
+
+Confirmed working unattended after a clean reboot: `blackbox` active,
+`bootsnap` wrote `boot-002.txt` (124 KB, 23 sections) on its own, and
+`state.log` recorded `### CLEAN STOP … up=212` — so a graceful shutdown is now
+distinguishable from a power cut.
+
+### Python 3.13 vs the runtime pins — settled
+
+Checked against the PyPI file lists, not inferred:
+
+| package | pinned | linux-aarch64 wheels | cp313? |
+|---|---|---|---|
+| `onnxruntime` | `1.18.1` | cp38–cp312 | **no** |
+| `numpy` | `1.26.4` | cp39–cp312 | **no** |
+
+So `pip install -e .` against `Open_Duck_Mini_Runtime` **cannot** work on this
+image as shipped. trixie has no `python3.11` package, and the image ships no
+`pip` at all (`python3-pip` is not installed; `venv` is present).
+
+`onnxruntime` gained cp313 aarch64 wheels at **1.20.0**. Three ways out:
+
+1. **Miniforge with Python 3.11** — matches the pins exactly, no reflash.
+   Preferred: the community's policies were produced and tested against these
+   versions, and inference numerics are the last thing worth improvising on.
+2. **Unpin** to `onnxruntime>=1.20` + a numpy 2.x. Cheapest, but drags in
+   numpy 2.x's breaking changes against code written for 1.26.
+3. **Reflash to Bookworm**, which ships Python 3.11 natively.
+
