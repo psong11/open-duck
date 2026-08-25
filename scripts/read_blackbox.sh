@@ -37,6 +37,7 @@ echo "=============== UNCLEAN SHUTDOWNS ==============="
 # A boot mark not followed by a CLEAN STOP means the Pi was killed, not shut down.
 awk '/^### boot mark/{if(pending) print "  HARD POWER CUT before: " $0; pending=1; last=$0}
      /^### CLEAN STOP/{pending=0}
+     /^### recorder restarted/{pending=0}
      END{if(pending) print "  (current boot still running or died: " last ")"}' \
   "$BB/state.log" 2>/dev/null || true
 
@@ -54,7 +55,8 @@ echo "=============== WIFI TIMELINE (state changes only) ==============="
 awk '/^### /{print; prev=""; next}
      {a="";i4="";nm="";
       for(i=1;i<=NF;i++){if($i~/^assoc=/)a=$i; if($i~/^ip4=/)i4=$i; if($i~/^nm=/)nm=$i}
-      k=a" "i4" "nm; if(k!=prev){sub(/^ts=/,"",$1); print "  " $1, k; prev=k}}' \
+      up=""; for(i=1;i<=NF;i++) if($i~/^up=/) up=$i
+      k=a" "i4" "nm; if(k!=prev){sub(/^ts=/,"",$1); printf "  %-22s %-8s %s\n", $1, up, k; prev=k}}' \
   "$BB/state.log" 2>/dev/null | tail -40 || true
 
 echo

@@ -105,10 +105,17 @@ case "${1:-run}" in
     done
     ;;
   stop)
-    # Only reached on an orderly shutdown. If a boot section has no CLEAN
-    # STOP at its end, that boot was killed by a power cut -- which is the
-    # difference between a software bug and an electrical one.
+    # A boot section with no CLEAN STOP at its end was killed by a power cut,
+    # which is how we tell an electrical failure from a software one.
+    #
+    # But ExecStop also fires on a plain `systemctl restart`, which is not a
+    # shutdown at all. Writing CLEAN STOP for that would forge the very marker
+    # the test depends on, so check whether the system is actually going down.
     dump_journal
-    emit "### CLEAN STOP $(date -u +%Y-%m-%dT%H:%M:%SZ) up=$(cut -d. -f1 /proc/uptime)"
+    if [ "$(systemctl is-system-running 2>/dev/null)" = "stopping" ]; then
+      emit "### CLEAN STOP $(date -u +%Y-%m-%dT%H:%M:%SZ) up=$(cut -d. -f1 /proc/uptime)"
+    else
+      emit "### recorder restarted, system still up $(date -u +%Y-%m-%dT%H:%M:%SZ) up=$(cut -d. -f1 /proc/uptime)"
+    fi
     ;;
 esac
