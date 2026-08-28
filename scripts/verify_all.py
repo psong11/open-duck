@@ -1,12 +1,18 @@
 #!/usr/bin/env python
-"""Phase 0 acceptance test: all 14 motors on the bus at once.
+"""Phase 0 acceptance test: all 14 motors on one bus, on the assembled robot.
 
-Proves three things that per-motor verification cannot:
-  1. every expected id answers
+STRICTLY READ-ONLY. Every call below is a get_*; no goal position, no torque
+command, no EEPROM write. Nothing here can move a joint. That matters because
+by the time this runs the legs are built, and a motor driven to a stale goal
+would push against the assembly.
+
+Proves what per-motor verification cannot:
+  1. every expected id answers on a shared bus
   2. no id is missing or duplicated (a duplicate hides as a single responder)
-  3. every motor's config survived being power-cycled and re-cabled
+  3. config survived being power-cycled and re-cabled
+  4. no joint is currently straining against its own linkage
 
-    .venv/bin/python scripts/verify_all.py --port <port>
+    python scripts/verify_all.py --port /dev/ttyACM0
 """
 
 import argparse
@@ -26,58 +32,90 @@ EXPECTED = {
     "acceleration": 0, "maximum_acceleration": 0, "mode": 0,
 }
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--port", required=True)
-args = parser.parse_args()
+p = argparse.ArgumentParser()
+p.add_argument("--port", required=True)
+p.add_argument("--timeout", type=float, default=0.05)
+p.add_argument("--strays", action="store_true",
+               help="also sweep ids 0-253 for unexpected motors (slow)")
+args = p.parse_args()
 
-io = FeetechSTS3215IO(args.port)
+io = FeetechSTS3215IO(args.port, timeout=args.timeout)
 
-# Anything still at a factory or unexpected address is a problem too.
-strays = []
-for i in range(254):
-    if i in JOINTS:
-        continue
+
+def get(mid, reg):
     try:
-        io.get_present_position([i])
-        strays.append(i)
+        return getattr(io, f"get_{reg}")([mid])[0]
     except Exception:
-        pass
+        return None
 
-print(f"{'id':<5}{'joint':<18}{'volts':<8}{'temp':<7}{'pos':<10}status")
-print("-" * 62)
 
-missing, misconfigured = [], []
+def fmt(v, unit="", scale=1.0, nd=1):
+    return f"{v * scale:.{nd}f}{unit}" if isinstance(v, (int, float)) else "-"
+
+
+print(f"{'id':<4}{'joint':<17}{'volt':<7}{'temp':<6}{'pos':<9}{'goal':<9}"
+      f"{'delta':<8}{'load':<7}{'mA':<7}status")
+print("-" * 92)
+
+missing, misconfigured, straining = [], [], []
+
 for mid, name in JOINTS.items():
-    try:
-        pos = io.get_present_position([mid])[0]
-    except Exception:
-        print(f"{mid:<5}{name:<18}{'-':<8}{'-':<7}{'-':<10}NOT RESPONDING")
+    pos = get(mid, "present_position")
+    if pos is None:
+        print(f"{mid:<4}{name:<17}{'-':<7}{'-':<6}{'-':<9}{'-':<9}{'-':<8}"
+              f"{'-':<7}{'-':<7}NOT RESPONDING")
         missing.append(mid)
         continue
 
-    def get(reg):
-        try:
-            return getattr(io, f"get_{reg}")([mid])[0]
-        except Exception:
-            return None
+    goal = get(mid, "goal_position")
+    load = get(mid, "present_load")
+    curr = get(mid, "present_current")
+    volt = get(mid, "present_voltage")
+    temp = get(mid, "present_temperature")
 
-    bad = [r for r, want in EXPECTED.items() if get(r) != want]
-    v = get("present_voltage")
-    t = get("present_temperature")
-    status = "ok" if not bad else f"BAD: {', '.join(bad)}"
+    delta = abs(pos - goal) if isinstance(goal, (int, float)) else None
+
+    bad = [r for r, want in EXPECTED.items() if get(mid, r) != want]
     if bad:
         misconfigured.append(mid)
-    volts = f"{v / 10:.1f}V" if isinstance(v, (int, float)) else "?"
-    print(f"{mid:<5}{name:<18}{volts:<8}{str(t) + 'C':<7}{pos:<10.1f}{status}")
 
-print("-" * 62)
+    # A joint far from its goal while pulling load is pushing on the linkage.
+    strain = (delta is not None and delta > 5
+              and isinstance(load, (int, float)) and abs(load) > 50)
+    if strain:
+        straining.append(mid)
+
+    status = "ok" if not bad else "BAD: " + ", ".join(bad)
+    if strain:
+        status = "STRAINING  " + status
+
+    print(f"{mid:<4}{name:<17}"
+          f"{fmt(volt, 'V', 0.1):<7}{fmt(temp, 'C', 1, 0):<6}"
+          f"{fmt(pos, '', 1):<9}{fmt(goal, '', 1):<9}{fmt(delta, '', 1):<8}"
+          f"{fmt(load, '', 1, 0):<7}{fmt(curr, '', 1, 0):<7}{status}")
+
+strays = []
+if args.strays:
+    print("\nsweeping for stray ids (this takes a moment)...")
+    for i in range(254):
+        if i in JOINTS:
+            continue
+        if get(i, "present_position") is not None:
+            strays.append(i)
+
+print("-" * 92)
 print(f"responding    {len(JOINTS) - len(missing)} / {len(JOINTS)}")
 if missing:
     print(f"MISSING       {missing}")
 if misconfigured:
     print(f"MISCONFIGURED {misconfigured}")
+if straining:
+    print(f"STRAINING     {straining}  <- joint is loaded and off its goal; "
+          f"cut power before investigating")
 if strays:
     print(f"STRAY ids     {strays}  <- unexpected motor on the bus")
+if not args.strays:
+    print("(stray sweep skipped; re-run with --strays to check for duplicates)")
 
 ok = not (missing or misconfigured or strays)
 print("\n" + ("PASS — Phase 0 complete." if ok else "FAIL — see above."))
