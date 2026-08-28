@@ -500,3 +500,45 @@ running. Never hot-plug it into a live system.
 series with the servo board's supply, or enough bulk capacitance on the UBEC
 input to ride through the sag. Not needed if the sequence is respected.
 
+
+### Installing pypot on the Pi — the recipe that works
+
+Pi OS trixie ships Python 3.13 and **no pip**. Miniforge with Python 3.11
+matches the runtime's pins without a reflash.
+
+```bash
+wget -O /tmp/Miniforge3.sh \
+  https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
+bash /tmp/Miniforge3.sh -b -p ~/miniforge3
+~/miniforge3/bin/conda create -y -n duck python=3.11
+```
+
+Then **two traps**, both of which cost a cycle:
+
+1. **`pypot` drags in `opencv-contrib-python`** — a 58 MB wheel. The Pi's wifi
+   dropped that download six times. Fetch it on the Mac and `scp` it over.
+2. **Install the *headless* OpenCV.** The normal build links against GTK/X11,
+   which Pi OS Lite does not have, so even a clean download dies at
+   `import cv2` — and that failure looks like a pypot bug, not a missing
+   system library.
+
+`FeetechSTS3215IO` only pulls in `cv2`, `numpy`, and `serial` — verified by
+watching `sys.modules`, not by reading the metadata. So skip the rest:
+
+```bash
+PIP=~/miniforge3/envs/duck/bin/pip
+$PIP install /tmp/opencv_contrib_python_headless-*-aarch64.whl   # keep the real wheel name!
+$PIP install numpy pyserial
+$PIP install --no-deps "pypot @ git+https://github.com/pollen-robotics/pypot@f6d305e70e1640f66188b256dfd1dcfeb8ab8a59"
+```
+
+> A wheel must keep its canonical `{name}-{version}-{python}-{abi}-{platform}.whl`
+> filename. Renaming it to something friendlier makes pip reject it with
+> *"Invalid wheel filename (wrong number of parts)"*.
+
+Installed: `pypot 5.0.2`, `pyserial 3.5`, `numpy 2.4.6`, `cv2 5.0.0`.
+
+> `numpy 2.4.6` will be **downgraded to 1.26.4** when the runtime is installed,
+> since that is what it pins. 1.26.4 has cp311 aarch64 wheels, so this is fine —
+> but expect the change and do not read it as breakage.
+

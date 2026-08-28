@@ -85,3 +85,32 @@ correct, but it *was* unsourced when first said. Asking for grounding produced
 the official wiring diagram, which is now in `docs/`. Good trade. Keep doing
 that.
 
+
+---
+
+## 2026-08-28 — the body answers
+
+**moment.** Fourteen motors, one bus, one command, and every single one
+answered. `responding 14 / 14`. The legs I built on the fifteenth, the head,
+the neck — all of it introduced itself through a single USB cable to a
+computer the size of a stick of gum sitting in the duck's skull.
+
+Somewhere in there is the thing I actually wanted from this project. Not a
+walking robot yet. Just: I asked, and it answered, and every part of it was
+something I put together with my hands.
+
+**note.** The table showed every motor sitting up to 358° away from its goal
+position while drawing exactly zero current. That's how you know torque is
+off — if it were on, a 358° error would have slammed fourteen servos to full
+power against a robot I just finished assembling. Limp and waiting is the
+correct state, and it was legible from the numbers rather than from hoping.
+
+**note.** Getting there took a detour through a 58 MB OpenCV wheel that
+`pypot` wants and the servo code never uses, downloaded six times over wifi
+that kept dropping it. Fixed by pulling it on the Mac and pushing it over the
+LAN — and by using the *headless* build, since the normal one needs graphics
+libraries that a headless Pi doesn't have.
+
+That would have been an hour of confusing debugging: the symptom is
+`ModuleNotFoundError: cv2`, and the cause is a window manager that isn't there.
+

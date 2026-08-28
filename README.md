@@ -34,8 +34,8 @@ The duck walks.
 | Phase | What happens | Status |
 |---|---|---|
 | **0. Wake the motors** | Each of the 14 servos gets a numbered identity before anything is assembled | ✅ done |
-| **1. Give it a body** | Assembly. Wiring, Loctite, calibration | ← here |
-| **2. Borrowed brain** | Drop in the community's pretrained policy. It walks | |
+| **1. Give it a body** | Assembly. Wiring, Loctite, calibration | ✅ done |
+| **2. Borrowed brain** | Drop in the community's pretrained policy. It walks | ← here |
 | **3. Its own brain** | Build the school. Train a policy myself. Sim-to-real | |
 | **4. Personality** | Eyes, speaker, mic, camera, antennas | |
 
@@ -115,3 +115,22 @@ Run it during Phase 1 when the daisy chain exists anyway.
 Every motor probed clean at id 1 with factory defaults before its write. Pack
 held 7.2–7.3V throughout (floor is 4.0V).
 
+
+### 2026-08-28 — the body answers
+
+All fourteen motors responding on **one shared bus**, on the fully assembled
+robot, through the Pi. Phase 0's real acceptance test, finally run.
+
+```
+responding    14 / 14
+no strays, no duplicate ids
+pack 7.4-7.5V under load   ·   all motors 26-28C
+PASS — Phase 0 complete.
+```
+
+Every servo reports `goal=-180.0` with deltas up to 358°, and `load=0`,
+`mA=0`. Torque is **off** — a 358° error with torque enabled would draw
+maximum current. The joints are limp and waiting, not fighting the linkage.
+
+**Power system signed off** for the idle case: barrel jack and USB both
+connected, `thr=0x0` across every sample ever recorded.
