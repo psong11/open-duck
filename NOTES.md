@@ -590,3 +590,36 @@ numbers.
 `~/duck_config.json` created from `example_config.json` and confirmed readable
 by `DuckConfig`. Attribute is `joints_offset`, singular.
 
+
+### The STS3215 offset register (addr 31) — verified behaviour
+
+Usable for fixing a horn installed half a turn out, **without disassembly and
+without any runtime cost**: the correction is applied inside the servo's own
+firmware, so the Pi's control loop never sees it. It lives in EEPROM and
+survives power cycles.
+
+Write pattern is the same as Phase 0 config: `set_lock(0)` → write →
+`set_lock(1)`.
+
+**pypot's units for this register are wrong for negative values.** It applies a
+Dynamixel linear map, but Feetech encodes the register as sign-magnitude around
+raw 2048, so the negative half folds. Measured on `head_yaw`:
+
+| wrote | actual shift |
+|---|---|
+| +10 | +9.94 |
+| +90 | +90.02 |
+| +170 | +169.93 |
+| +180 | −180.13 (same rotation, clean wrap) |
+| **−170** | **−10.03** ← not −170 |
+
+Rule for the negative half: real shift = `−(180 + X)`. So to get −171° you
+write **−9**, not −171. **Stay in the positive half** and let the ±180 wrap do
+the work instead.
+
+A resting `get_offset` of **−180.0 means raw 0, i.e. no offset at all** — not a
+180° correction already applied. Do not misread that as a configured value.
+
+**Goal and present positions share one frame.** Verified: with a +90 offset,
+commanding 97.00 reached 96.22. So the correction is safe to control through.
+
