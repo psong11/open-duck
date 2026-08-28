@@ -542,3 +542,51 @@ Installed: `pypot 5.0.2`, `pyserial 3.5`, `numpy 2.4.6`, `cv2 5.0.0`.
 > since that is what it pins. 1.26.4 has cp311 aarch64 wheels, so this is fine —
 > but expect the change and do not read it as breakage.
 
+
+### IMU — working, with one unresolved question (2026-08-28)
+
+BNO055 answers at `0x28`. I²C needs **both** fixes on a fresh card, and the
+second is the one people miss:
+
+```bash
+sudo sed -i 's/^#dtparam=i2c_arm=on/dtparam=i2c_arm=on/' /boot/firmware/config.txt
+echo i2c-dev | sudo tee -a /etc/modules    # config.txt alone does NOT create /dev/i2c-*
+sudo reboot
+```
+
+Live reading at rest, `upside_down=False`:
+
+```
+accelero [ 1.60  -0.13  -9.83 ]     gyro [ 0.001  -0.003  -0.001 ]
+```
+
+Magnitude **9.96 m/s²** vs standard gravity 9.807 — 1.6% high, normal
+uncalibrated. It is genuinely measuring the Earth, not returning plausible
+numbers.
+
+**Two open items:**
+
+1. **A ~9° tilt.** `acos(9.83/9.96) ≈ 9.3°` off vertical, from the 1.60 on X.
+   Either the duck leans on the bench or the IMU sits at an angle in the head.
+   The policy takes tilt as input, so a constant bias reads as "falling."
+
+2. **`imu_upside_down` is unresolved.** The two branches in `raw_imu.py`
+   differ *only* in the sign of Y and Z:
+
+   | flag | remap signs | Z reads |
+   |---|---|---|
+   | `False` | `(NEG, POS, POS)` | −9.83 (measured) |
+   | `True`  | `(NEG, NEG, NEG)` | +9.83 |
+
+   `v2_rl_walk_mujoco.py:76` takes the flag from `duck_config.json`, and
+   :158-159 feed the **raw** `gyro` and `accelero` into the policy's
+   observation. So the correct sign is whichever the policy saw in training —
+   that convention lives in `Open_Duck_Playground`, not in this repo.
+
+   **Do not guess this.** Wrong sign means the duck's sense of up is inverted.
+   Resolve it either by checking the physical mounting of the BNO055 in the
+   head, or by reading the observation builder in the training env.
+
+`~/duck_config.json` created from `example_config.json` and confirmed readable
+by `DuckConfig`. Attribute is `joints_offset`, singular.
+
