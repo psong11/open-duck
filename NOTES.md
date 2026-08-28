@@ -664,3 +664,39 @@ moment of torque a no-op. **Run this before `find_soft_offsets.py`.**
 > fresh connections — but the definitive check is switching the pack off and on
 > and re-reading. Do that before trusting it.
 
+
+### Joint order differs between my scripts and the runtime
+
+The runtime's `HWI.joints` is ordered **left leg → head → right leg**, and the
+source says `# Order matters here`. `get_present_positions()` returns a list in
+that order, and `find_soft_offsets.py` indexes into it positionally.
+
+My scripts address motors by **id**, so order never matters to them — but a
+cross-check that compares two lists *by index* will produce a screenful of
+false disagreements. It did exactly that once.
+
+Verified 2026-08-28, using the HWI's own ordering: **rustypot and pypot agree
+on all 14 joints within 0.08°**, and the `+180` EEPROM offsets are visible
+through rustypot (`right_hip_pitch +3.84°`, `left_hip_pitch −6.93°`). The
+runtime sees the corrected robot.
+
+### find_soft_offsets.py has no finally block
+
+It catches `KeyboardInterrupt` only. Any other exit path — a USB
+re-enumeration, an unhandled exception — leaves **torque engaged**, with the
+servos holding their last goal against whatever is in the way.
+
+Keep a second terminal open:
+
+```bash
+python scripts/torque_off.py --port /dev/ttyACM0
+```
+
+It also **does not save anything**. It prints the offsets and tells you to copy
+them into `duck_config.json` by hand. If the Pi dies mid-run the work is gone,
+so log the session:
+
+```bash
+python find_soft_offsets.py 2>&1 | tee ~/offsets-$(date +%F-%H%M).log
+```
+
