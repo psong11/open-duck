@@ -153,6 +153,43 @@ was caught by a different field entirely — a boot mark with no `CLEAN STOP`.
 
 ---
 
+## 8. Test at the magnitude you will actually use
+
+**Trigger:** you are about to verify a mechanism with a small, convenient value
+and then apply it at a much larger one.
+
+The servo offset register needed a **171°** correction. The first test used
+**10°** and passed perfectly — 1 unit in, 1 degree out, clean readback from
+EEPROM. Every instinct said "characterised, go."
+
+It was a lucky test. Feetech encodes that register as sign-magnitude around raw
+2048, and pypot maps it linearly like a Dynamixel. Positive values up to +180
+happen to line up; the negative half folds. Writing −170 yields **−10**. The
+value we needed sat right on that seam, and a 10° test can never see a seam at
+170°.
+
+Four data points found it. One would have written a wrong number into EEPROM on
+a structural joint of an assembled robot.
+
+**Rule:** probe the boundary you intend to operate near, not the middle where
+everything is well behaved. If the mechanism has a sign, test both signs. If it
+has a range, test the end you will use.
+
+---
+
+## 9. Clean up your own experiments
+
+**Trigger:** you commanded something during a test and moved on.
+
+My motion test left `head_yaw` with `goal_position = 92°`. Harmless while
+torque was off — and a lurch waiting for whoever enabled it next. I only caught
+it because a later scan printed the goal column.
+
+**Rule:** a test that changes state owns restoring it, in a `finally` block, and
+the next scan should confirm it. "I'll remember" is not a mechanism.
+
+---
+
 ## The corrections, for the record
 
 Battery-pack requirement asserted without a source · BMS 0V fault signature ·
