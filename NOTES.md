@@ -623,3 +623,44 @@ A resting `get_offset` of **−180.0 means raw 0, i.e. no offset at all** — no
 **Goal and present positions share one frame.** Verified: with a +90 offset,
 commanding 97.00 reached 96.22. So the correction is safe to control through.
 
+
+### Hip pitch horns corrected in EEPROM (2026-08-28)
+
+Both hip pitch horns were installed half a turn out, leaving those joints
+against the ±180 wraparound where any control loop misbehaves. Fixed in the
+servos' own firmware — no disassembly, no runtime cost:
+
+```bash
+python scripts/write_offset.py --port /dev/ttyACM0 --set 12:180 --set 22:180
+```
+
+| joint | before | after |
+|---|---|---|
+| `right_hip_pitch` (12) | −176.40° | **+3.56°** |
+| `left_hip_pitch` (22) | +173.32° | **−6.73°** |
+
+Reversible: `--restore 12 --restore 22` writes raw 0 back.
+
+### Park the goals before anything enables torque
+
+An uncommanded STS3215 reports `goal_position = -180.0` (raw 0). The runtime's
+`turn_on()` sets gains a **full second** before it sets positions, so on an
+assembled robot that window can lurch all fourteen joints toward −180 at once.
+
+```bash
+python scripts/park_goals.py --port /dev/ttyACM0      # writes goal = present
+```
+
+Writing a goal while torque is off moves nothing; it just makes the first
+moment of torque a no-op. **Run this before `find_soft_offsets.py`.**
+
+> Remaining large swing: both knees sit at ~100°, and `zero_pos` is 0° —
+> straight legs. That is expected (a BDX stands crouched; the runtime's own
+> `init_pos` knee is 78°), but it means the duck will try to stand up straight
+> when the script starts. Support it.
+
+> **Untested:** EEPROM persistence across a servo power cycle. Address 31 is in
+> the EEPROM range and the lock/unlock dance is EEPROM-specific, and it survived
+> fresh connections — but the definitive check is switching the pack off and on
+> and re-reading. Do that before trusting it.
+
