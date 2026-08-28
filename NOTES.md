@@ -700,3 +700,49 @@ so log the session:
 python find_soft_offsets.py 2>&1 | tee ~/offsets-$(date +%F-%H%M).log
 ```
 
+
+### Incident: Pi died during calibration (2026-08-28)
+
+Running `find_soft_offsets.py`. The Pi went dark; **the servos kept holding
+torque** and the UBEC sat solid red. Zero joints had been approved, so nothing
+was lost.
+
+**Diagnosis: the 5V rail collapsed. Not software.**
+
+| evidence | rules out |
+|---|---|
+| Pi LED fully off, not blinking | a software hang (leaves the LED lit) |
+| no panic, no oops, no failed units | a kernel crash |
+| no ext4 or I/O errors | SD card failure |
+| servos still holding | the pack dying outright — they run on the **raw** rail, not through the UBEC |
+| UBEC solid *afterwards* | a UBEC fault — it recovers once the Pi's load disappears |
+| `thr=0x0` in all 439 samples | nothing; a collapse this fast never latches |
+
+**A solid UBEC after the fact is not evidence it never faltered.** With the Pi
+dead its load is ~nothing, so it looks healthy. Same for the barrel-jack event.
+
+**Why calibration is the worst case for power.** Every joint you approve leaves
+torque *engaged*. By the tenth joint, ten servos are continuously holding the
+robot's weight against gravity while you wrestle the eleventh. Idle draw is
+near zero; this is not idle. The pack was at ~7.1 V, roughly half charge.
+
+**Charge the pack before attempting calibration.** That is the cheap decisive
+experiment: if a full pack survives, it was sag.
+
+#### Two tooling defects this exposed
+
+1. **`journal-tail.txt` was overwritten by the recovery boot within 60 s**, so
+   the crash evidence was destroyed by the thing recovering from it. Fixed:
+   `blackbox.sh` now copies it to `journal-tail-prev.txt` before the new boot
+   starts writing. *Recovery must not destroy the record of the failure.*
+2. **`tee` is not crash-safe.** The offsets log lost its tail — the terminal
+   showed `turn on : high kps`, the file did not. Page cache dies with the
+   power. Mitigating factor: the script reprints the full offset set after
+   every joint, so at most the last joint is lost.
+
+#### Do not index boot sections positionally
+
+The Pi has no RTC, so `ts=` jumps around and boot sections do not sort by time.
+An `awk` picking "the third boot mark" returned a section from three days
+earlier. Match on content, not position.
+

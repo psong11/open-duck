@@ -93,6 +93,11 @@ trim() {
 
 case "${1:-run}" in
   run)
+    # The crash evidence lives in the PREVIOUS boot's journal tail, and the
+    # boot that comes asking would otherwise overwrite it within 60 seconds.
+    # Recovery must not destroy the record of the failure it recovered from.
+    [ -f "$JT" ] && cp "$JT" "$BB/journal-tail-prev.txt" && sync
+
     emit "### boot mark $(date -u +%Y-%m-%dT%H:%M:%SZ) kernel=$(uname -r)"
     i=0
     while true; do
