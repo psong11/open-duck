@@ -746,3 +746,37 @@ The Pi has no RTC, so `ts=` jumps around and boot sections do not sort by time.
 An `awk` picking "the third boot mark" returned a section from three days
 earlier. Match on content, not position.
 
+
+### The walk needs a physical gamepad — there is no way around it in code
+
+`v2_rl_walk_mujoco.py` defines `--commands` as `action="store_true"` with
+`default=True`. That is a bug: the flag can only ever set it to what it
+already is, so **there is no CLI way to disable command input.** The
+controller is always constructed.
+
+And `xbox_controller.py` does `pygame.joystick.Joystick(0)` — it wants a
+**gamepad attached to the Pi**, not a network client. The `--commands` help
+text says *"Launch control_server.py on host computer"*, but **no such file
+exists in this repo.** Upstream drift; do not go looking for it.
+
+So either pair an Xbox controller over Bluetooth, or patch the script:
+
+```python
+# in __init__, after self.commands is read from args
+self.commands = False        # no gamepad attached
+```
+
+With commands disabled the policy still runs — it just receives a zero
+velocity command, so the duck balances and steps in place rather than
+travelling. That is the *better* first test anyway.
+
+### Power: the walk is the highest load this robot has ever drawn
+
+Holding the zero pose browned out the Pi once already at ~7 V. Walking is
+strictly worse: all fourteen servos accelerating and decelerating at 50 Hz
+rather than statically holding.
+
+**Charge to 8.4 V before attempting the walk.** And note the failure mode —
+if the Pi dies mid-walk, every joint goes limp *instantly* and the duck drops
+wherever it is. Do the first attempt low to the ground, or held.
+

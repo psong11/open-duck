@@ -134,3 +134,24 @@ maximum current. The joints are limp and waiting, not fighting the linkage.
 
 **Power system signed off** for the idle case: barrel jack and USB both
 connected, `thr=0x0` across every sample ever recorded.
+
+### 2026-08-28 — calibrated
+
+`duck_config.json` is set. Twelve of fourteen joints needed **no** correction:
+
+| | |
+|---|---|
+| `imu_upside_down` | `true` — measured, then confirmed against the physical mount |
+| `left_hip_roll` | `−0.1189` rad |
+| `head_roll` | `−0.1051` rad |
+| everything else | `0.0` |
+| both hip pitches | `+180` in **servo EEPROM**, not in software |
+
+The duck stands under its own power holding the zero pose, 14/14 joints
+engaged, 28–31 °C, `thr=0x0`.
+
+Backed up to `config/duck_config.json`, because it lives in `$HOME` on the Pi
+and dies with the SD card.
+
+Policy staged: `BEST_WALK_ONNX_2.onnx`, 864 KB,
+md5 `06ad1fb5b2a7228e0379f2f3a7592b46`, verified matching on both machines.
