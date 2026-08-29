@@ -780,3 +780,45 @@ rather than statically holding.
 if the Pi dies mid-walk, every joint goes limp *instantly* and the duck drops
 wherever it is. Do the first attempt low to the ground, or held.
 
+
+### Walking without a gamepad
+
+`--commands` is declared `action="store_true", default=True`, which can never
+evaluate false — so the runtime always constructs an `XBoxController` and
+always calls `pygame.joystick.Joystick(0)`. Fix the declaration rather than
+work around it:
+
+```python
+"--commands", action="store_true", default=False,     # was default=True
+```
+
+Now omitting the flag genuinely disables command input. `last_commands` stays
+`[0.0] * 7`, so the policy receives **zero velocity** and the duck balances and
+steps in place instead of travelling. That is the better first test anyway —
+it separates "can it stand up and stabilise" from "can it go somewhere."
+
+`start_paused: false` in `duck_config.json` means it runs immediately; you do
+not need a controller button to begin.
+
+> **Ctrl-C does NOT release the motors.** The handler stops antennas, eyes,
+> projector and foot sensors, then falls through — `hwi.turn_off()` is never
+> called. The duck freezes stiff, still drawing current. Release it with
+> `scripts/torque_off.py`.
+
+### Bluetooth on a fresh Pi OS image is rfkill soft-blocked
+
+`bluetoothctl power on` fails with the useless `org.bluez.Error.Failed`. The
+hardware is fine — `hciconfig` shows `hci0` up with firmware loaded. The block
+is in `/sys/class/rfkill/*/soft`. `rfkill` the CLI is not installed; write the
+sysfs node directly. `bt-unblock.service` on the Pi now clears it before
+`bluetooth.service` starts.
+
+Also: **game controllers use Bluetooth Classic, not BLE.** `bluetoothctl scan
+on` surfaced a screenful of BLE lightbulbs and no gamepad. `hcitool scan` does
+a classic inquiry and is the right tool.
+
+### Policy shape
+
+`BEST_WALK_ONNX_2.onnx` — input `obs [1, 101]`, output `continuous_actions
+[1, 14]`. 101 numbers in, one target per joint out, 50 times a second.
+
