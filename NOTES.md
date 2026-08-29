@@ -822,3 +822,45 @@ a classic inquiry and is the right tool.
 `BEST_WALK_ONNX_2.onnx` — input `obs [1, 101]`, output `continuous_actions
 [1, 14]`. 101 numbers in, one target per joint out, 50 times a second.
 
+
+### Walk attempt 1 — browned out in seconds at 7.7 V
+
+The walk engaged torque on all 14 and commanded the crouch. The Pi died almost
+immediately. Evidence it ran at all: the servos were left **locked**, which
+only the policy could have done — and `find / -name "walk-*.log"` returns
+**nothing**, because ext4's default 5 s commit interval had not yet flushed the
+freshly-created log when the power went.
+
+**The absence of the log is the measurement.** It bounds the run at under a few
+seconds.
+
+Load ranking, all measured on this robot:
+
+| state | pack | result |
+|---|---|---|
+| idle, torque off | 7.0 V | fine for hours |
+| holding a static pose | 7.0 V | browned out after minutes |
+| **walking** | **7.7 V** | **browned out in seconds** |
+
+#### A dead Pi leaves the duck RIGID, not limp
+
+The servos are on the raw 7.4 V rail; only the Pi is behind the UBEC. When the
+Pi dies the servos keep their last goal with torque engaged, indefinitely.
+
+**Therefore `torque_off.py` is not an emergency stop.** It runs on the machine
+that failed. The only real emergency stop is the physical power switch — say so
+first, every time.
+
+#### Ctrl-C does not reliably stop the walk either
+
+Under `ssh -t '... | tee'` the SIGINT has to traverse the pipeline to a process
+busy in a 50 Hz control loop. Combined with the Pi already being dead, nothing
+in software was going to help.
+
+#### Worth trying: power the Pi separately during walk testing
+
+A USB power bank into the Pi's `PWR IN` decouples the brain from servo current
+sag entirely, so a surge cannot kill the session mid-test. Caveat: the Pi Zero
+has no power-path management, so two 5 V sources fighting is not ideal —
+disconnect the UBEC's 5 V feed if doing this.
+
