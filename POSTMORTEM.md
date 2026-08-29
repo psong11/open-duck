@@ -190,6 +190,53 @@ the next scan should confirm it. "I'll remember" is not a mechanism.
 
 ---
 
+## 10. An emergency stop that runs on the failing machine is not an emergency stop
+
+**Trigger:** you are about to hand someone a "kill switch."
+
+I gave Paul `torque_off.py` and called it his kill switch. When the walk browned
+out the Pi, the servos stayed locked at full torque — they sit on the raw
+battery rail, not behind the regulator — and the script could not run, because
+the machine it needed was the machine that died. Ctrl-C could not reach it
+either. He sat there holding a rigid duck while I tried to SSH into a corpse.
+
+**The only real emergency stop was the physical power switch, and I mentioned it
+fourth.** Order the options by reliability, not by convenience, and lead with
+the one that cannot fail: the one that does not depend on software, the network,
+or the thing that just broke.
+
+---
+
+## 11. Know which rail each subsystem is on before reasoning about power
+
+**Trigger:** you are about to explain a power failure.
+
+Nearly every confusing symptom this build resolved the moment the topology was
+clear: **servos on the raw 7.4 V rail, Pi on 5 V behind the UBEC.** That single
+fact explains why the Pi dies while the servos keep holding, why the UBEC reads
+solid *after* a failure (its load vanished with the Pi), and why a dead Pi
+leaves the robot rigid instead of limp.
+
+Before diagnosing, draw the rails. A symptom that is baffling on one rail is
+obvious once you know there are two.
+
+---
+
+## 12. Absence of an artifact is evidence — read it
+
+**Trigger:** something you expected to be written is missing.
+
+`find / -name "walk-*.log"` returned nothing after the walk. The instinct is to
+treat that as a dead end. It was actually the measurement: ext4 commits every
+five seconds, so a log created and then lost to a hard power cut **bounds the
+run at under five seconds.** Combined with servos left locked — which only the
+policy could have done — it dated the failure precisely without a single line of
+log content.
+
+Ask what the world would have to look like for this thing to be missing.
+
+---
+
 ## The corrections, for the record
 
 Battery-pack requirement asserted without a source · BMS 0V fault signature ·

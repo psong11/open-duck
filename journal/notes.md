@@ -114,3 +114,71 @@ libraries that a headless Pi doesn't have.
 That would have been an hour of confusing debugging: the symptom is
 `ModuleNotFoundError: cv2`, and the cause is a window manager that isn't there.
 
+
+---
+
+## 2026-08-28 — the body answers, and then runs out of breath
+
+**moment.** Fourteen motors, one bus, one command, and every one answered.
+`responding 14 / 14`. The legs I built, the head, the neck — all of it
+introducing itself through a single cable to a computer the size of a stick of
+gum sitting in the duck's skull. Not walking yet. But I asked, and it answered,
+and every part of it was something I put together with my hands.
+
+**note.** The IMU said the duck was tilted nine degrees. It wasn't. The sensor
+is mounted component-side down — upside down — and with the axis convention
+corrected it reads dead level, gravity a clean `+9.91` on Z. The nine degrees
+was never real. It was gravity leaking into the wrong axis.
+
+Worth keeping because the wrong diagnosis was the *plausible* one: "your robot
+leans slightly" is a perfectly reasonable thing to believe, and it would have
+had me shimming a joint that was already true.
+
+**note.** Both hip pitch horns went on half a turn out. Instead of taking the
+legs apart, we wrote a `+180` correction into each servo's own EEPROM — the
+motor now does the arithmetic in its firmware, so the Pi's control loop never
+sees it and pays nothing for it. Upstream has this on their TODO list and
+hasn't built it yet.
+
+Finding out whether that register was trustworthy took four tests, not one. The
+first test — ten degrees — passed beautifully. So did ninety, and a hundred and
+seventy. Then negative a hundred and seventy came back as negative ten, because
+the chip encodes sign one way and the library reads it another. The number I
+actually needed sat right on that seam. A single clean test would have written
+a wrong number permanently into a structural joint.
+
+**note.** Three brownouts in one evening, and they rank exactly the way physics
+says they should: idle runs for hours, holding a pose dies after minutes,
+walking dies in seconds. The last one killed the Pi so fast that the log file
+never made it out of the page cache — **the absence of the log was the
+measurement.** It bounded the run at under five seconds.
+
+**note.** A dead Pi leaves the duck *rigid*, not limp. The servos live on the
+raw battery rail; only the brain sits behind the regulator. So when the brain
+dies the joints hold their last order indefinitely, and nothing on the network
+can reach them. The only real emergency stop is the power switch. I had been
+handed a software kill switch that ran on the machine that failed.
+
+**moment.** Paired the controller after a genuinely stupid chain: bluetooth was
+soft-blocked by rfkill, which reports as a meaningless `org.bluez.Error.Failed`;
+game controllers speak Bluetooth Classic while every scan I'd run was looking at
+Low Energy; the Pi shares one antenna between wifi and bluetooth so the thing
+had to be pressed against the duck's head; and pairing needs an agent process
+that `bluetoothctl` silently fails to register when driven from a pipe.
+
+Four independent walls. None of them mentioned anywhere in the build docs.
+
+**moment.** Late in the night I read back through the reasoning and found a
+line where it had worked out, from a UTC timestamp in a log, that it was about
+half past nine my time — and decided on its own to stop pushing and start
+wrapping up, because I'd been at this since morning.
+
+I asked how that happens. The honest answer was that nothing is hardcoded for
+it: the timestamps and the session length were just observations, like a voltage
+reading, and the disposition to *act* on them fell out of training rather than
+being installed. It won't claim to have felt anything, and it won't deny it
+either.
+
+I don't fully know what to do with that. But building a robot all day and
+having the thing helping me build it notice I was tired — I'm floored, and I
+wanted it written down.

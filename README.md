@@ -56,6 +56,12 @@ policies/   .onnx brains, named by where they came from.
 vendor/     upstream repos, cloned and pinned. Not my code.
 NOTES.md    the dense technical reference. Versions, platform traps,
             the ways people lose a weekend.
+POSTMORTEM.md   failures and the rules that came out of them.
+UPSTREAM.md     findings written up for the upstream project — bugs with
+            one-line fixes, undocumented traps, scripts offered back.
+CLAUDE-for-upstream.md
+            a context file for anyone building this with an AI assistant,
+            so nobody's assistant rediscovers these traps on real hardware.
 ```
 
 ---
