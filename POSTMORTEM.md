@@ -237,11 +237,41 @@ Ask what the world would have to look like for this thing to be missing.
 
 ---
 
+## 13. `pkill -f` matches the command line asking for it
+
+Three times in one session, a check for a stray process killed the shell
+running the check, or reported a process that was only ever its own `grep`.
+
+    pkill -TERM -f powerwatch.py      # kills the ssh session too
+    pkill -TERM -f '[p]owerwatch.py'  # still does: the ssh command line
+                                      # contains the unbracketed name earlier
+    pgrep -f 'run_walk|walklogs'      # matches the awk pattern in the argv
+
+`-f` searches the whole argument vector of every process, and the process
+doing the searching has the pattern sitting in its own argv. Remote shells
+make it worse: `ssh host 'cmd'` puts the entire command string on the remote
+side's command line, so anything mentioning the target name matches.
+
+Kill by PID you captured yourself:
+
+    thing & PID=$!
+    kill -TERM "$PID"
+
+The bracket trick works for `ps | grep`, where the *grep* is the only other
+process holding the pattern. It does not save you when the surrounding shell
+also names the thing.
+
+The wider lesson is the one from rule 12 in reverse: a positive result from a
+tool that can see itself is not evidence. Ask what else could have produced
+the match before believing it.
+
+---
+
 ## The corrections, for the record
 
 Battery-pack requirement asserted without a source · BMS 0V fault signature ·
 solder order stated as spec · FD/CD pads claimed unused · mDNS · Raspberry Pi
 OUI · "SD card is dying" · UART jumper position · USB-wrong-port theory ·
 `firstrun.sh` · pip3 wheel test · false-positive watcher · watcher window too
-short · PARTUUID change nearly reported as corruption (caught by checking
+short · `pgrep -f` self-match reported as a live process · PARTUUID change nearly reported as corruption (caught by checking
 `fdisk` first).
