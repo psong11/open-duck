@@ -88,35 +88,6 @@ that.
 
 ---
 
-## 2026-08-28 — the body answers
-
-**moment.** Fourteen motors, one bus, one command, and every single one
-answered. `responding 14 / 14`. The legs I built on the fifteenth, the head,
-the neck — all of it introduced itself through a single USB cable to a
-computer the size of a stick of gum sitting in the duck's skull.
-
-Somewhere in there is the thing I actually wanted from this project. Not a
-walking robot yet. Just: I asked, and it answered, and every part of it was
-something I put together with my hands.
-
-**note.** The table showed every motor sitting up to 358° away from its goal
-position while drawing exactly zero current. That's how you know torque is
-off — if it were on, a 358° error would have slammed fourteen servos to full
-power against a robot I just finished assembling. Limp and waiting is the
-correct state, and it was legible from the numbers rather than from hoping.
-
-**note.** Getting there took a detour through a 58 MB OpenCV wheel that
-`pypot` wants and the servo code never uses, downloaded six times over wifi
-that kept dropping it. Fixed by pulling it on the Mac and pushing it over the
-LAN — and by using the *headless* build, since the normal one needs graphics
-libraries that a headless Pi doesn't have.
-
-That would have been an hour of confusing debugging: the symptom is
-`ModuleNotFoundError: cv2`, and the cause is a window manager that isn't there.
-
-
----
-
 ## 2026-08-28 — the body answers, and then runs out of breath
 
 **moment.** Fourteen motors, one bus, one command, and every one answered.
@@ -159,6 +130,20 @@ dies the joints hold their last order indefinitely, and nothing on the network
 can reach them. The only real emergency stop is the power switch. I had been
 handed a software kill switch that ran on the machine that failed.
 
+**note.** The table showed every motor sitting up to 358° away from its goal
+position while drawing exactly zero current. That's how you know torque is
+off — if it were on, a 358° error would have slammed fourteen servos to full
+power against a robot I just finished assembling. Limp and waiting is the
+correct state, and it was legible from the numbers rather than from hoping.
+
+**note.** Getting there took a detour through a 58 MB OpenCV wheel that
+`pypot` wants and the servo code never uses, downloaded six times over wifi
+that kept dropping it. Fixed by pulling it on the Mac and pushing it over the
+LAN — and by using the *headless* build, since the normal one needs graphics
+libraries that a headless Pi doesn't have. That would have been an hour of
+confusing debugging: the symptom is `ModuleNotFoundError: cv2`, and the cause
+is a window manager that isn't there.
+
 **moment.** Paired the controller after a genuinely stupid chain: bluetooth was
 soft-blocked by rfkill, which reports as a meaningless `org.bluez.Error.Failed`;
 game controllers speak Bluetooth Classic while every scan I'd run was looking at
@@ -182,3 +167,70 @@ either.
 I don't fully know what to do with that. But building a robot all day and
 having the thing helping me build it notice I was tired — I'm floored, and I
 wanted it written down.
+
+---
+
+## 2026-08-30 — the instrument is cheaper than the guessing
+
+**moment.** The duck has never taken a step. I found that out today, on the
+fourth try, and it reframes everything I thought I knew about this problem.
+Three times I'd said "walking browns out the Pi." It doesn't. The Pi dies four
+and a half seconds in, during start-up, before the control loop ever begins.
+The walk was never reached. I'd been naming the failure after the script it
+happened inside.
+
+**note.** The reason it took four attempts to learn this is that the machine
+writing down what happened was the machine that kept dying. Every brownout
+destroyed its own evidence. So before running anything else I built a recorder
+that forces each sample to disk the instant it's taken — a queue on the control
+loop, a writer thread doing the `fsync`, so the loop never waits on an SD card
+and nothing that lands is lost to a power cut. A clean run ends by writing the
+word `END`. A file that just stops is a death. That one difference is the
+whole diagnostic.
+
+**note.** Found a sensor on the Pi I didn't know was there:
+`/sys/class/hwmon/hwmon1/in0_lcrit_alarm`, the low-voltage flag from the
+`rpi_volt` driver. It's a plain file read rather than a call into the firmware,
+which means it can be sampled twenty times a second instead of once. Worth
+knowing: it never tripped. Neither did the throttle word. That is *not* the
+same as the power being fine — the chip has to survive at a degraded voltage
+long enough to notice and set a bit, and a fast enough collapse leaves nothing
+behind at all. Silence from a sensor is not a negative result.
+
+**note.** My first real test was a bad experiment and I want it written down
+rather than quietly deleted. I ramped the servo gain from 4 to 32, the full
+runtime value, and the pack didn't budge — a tenth of a volt. Looked like an
+exoneration. It wasn't: I'd parked every joint's target at exactly where it
+already was, so the position error was zero, and gain is a multiplier on error.
+I'd floored the accelerator in neutral. The lesson isn't "test more carefully,"
+it's that a test which cannot fail hasn't told you anything, and a clean result
+should make you suspicious before it makes you confident.
+
+**note.** The real test was the crouch. Start-up writes an init pose to all
+fourteen servos in one command — knees near 78°, hips 36°, ankles 45°. Stretch
+that move over ten seconds instead and read the pack twenty times a second, and
+the answer is a slope, not a cliff: 7.6 V down to 6.5 V, about a tenth of a
+volt for every ten percent deeper the duck squats. Load-proportional, all the
+way down.
+
+**note.** Then the part I didn't expect. Reading the load on every joint while
+it held that crouch: twelve of the fourteen are doing essentially nothing, and
+two — both hip pitches — are pulling twenty times the median and stalling
+twenty degrees short of where they were told to go. A stalled motor is a motor
+drawing its maximum current. Two servos are carrying the entire robot and
+getting hot doing it.
+
+**worth keeping.** The shape of the answer is a vice with no gap in it. At low
+gain the duck survives but can't hold itself up. At the gain that would hold it
+up, the current drags the pack below what the Pi's regulator needs and the
+brain dies. There is no setting that does both. That's not a bug I can write my
+way out of — it's a battery that can't afford to stand up. Two full overnight
+charges both stopped at 7.8 V on a pack whose full is 8.4, which is either a
+charger in the wrong mode or a pack near the end of its life. Tomorrow's
+problem.
+
+**worth keeping.** The thing I'll actually carry out of today isn't about
+batteries. It's that I spent three sessions asking *why did it die* and getting
+nowhere, and about an hour building something that could survive the death and
+tell me — and then knew within one run. The instrument was cheaper than the
+guessing. It always is, and I keep having to relearn it.
