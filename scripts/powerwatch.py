@@ -34,8 +34,13 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from duck_flightlog import FlightLog  # noqa: E402
 
-HZ = 10.0
-THR_EVERY = 10  # get_throttled forks; 1 Hz is enough for a latched bit
+# The Pi shares the servo pack, so it dies with the walk. Sample rate is
+# therefore resolution on the time of death -- and on how much warning, if
+# any, the rail gives before it goes. 20 Hz is the highest rate that still
+# fsyncs every sample without dropping; FlightLog counts drops if it cannot
+# keep up, so a run that reports dropped>0 should be rerun slower.
+HZ = float(os.environ.get("POWERWATCH_HZ", 20.0))
+THR_EVERY = int(HZ)  # get_throttled forks; 1 Hz is enough for a latched bit
 
 LCRIT = "/sys/class/hwmon/hwmon1/in0_lcrit_alarm"
 TEMP = "/sys/class/thermal/thermal_zone0/temp"
