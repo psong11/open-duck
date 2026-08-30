@@ -81,6 +81,7 @@ for mid, pos in present.items():
 
 reason = "completed"
 kp = a.start
+last_ok = None
 try:
     io.set_P_coefficient({mid: a.start for mid in IDS})
     io.enable_torque(IDS)
@@ -101,6 +102,7 @@ try:
         vend = pack_v()
         fl.sample(kp, kp=kp, v_min=vmin, v_end=vend, held_s=round(time.time() - t0, 2))
         print("  kp %3d   min %sV   end %sV   survived" % (kp, vmin, vend), flush=True)
+        last_ok = kp
         kp += a.step
 
 except KeyboardInterrupt:
@@ -115,4 +117,6 @@ finally:
         print("\ntorque released.")
     except Exception:
         print("\ncould not release torque - bus is gone.")
-    print("reason: %s   last kp attempted: %d" % (reason, kp))
+    # Report the gain that actually held. Printing the loop counter would
+    # name a step that was never attempted.
+    print("reason: %s   highest Kp survived: %s" % (reason, last_ok))
