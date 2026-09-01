@@ -234,3 +234,87 @@ batteries. It's that I spent three sessions asking *why did it die* and getting
 nowhere, and about an hour building something that could survive the death and
 tell me — and then knew within one run. The instrument was cheaper than the
 guessing. It always is, and I keep having to relearn it.
+
+---
+
+## 2026-08-31 — four days, and it was a minus sign
+
+**moment.** The duck walked. Badly — it wobbled, it drove its face into the
+floor, it looked less like a robot and more like something being born — but the
+control loop ran for a full minute at fifty hertz and the machine stayed alive
+through all of it. For four days it had been dying at four and a half seconds,
+every single time, before it ever took a step.
+
+The thing that fixed it was a minus sign.
+
+**note.** Here is the shape of the mistake, and I want it written down plainly
+because I think it is the most useful thing I have learned on this project so
+far. The symptom was that the battery collapsed whenever the robot tried to
+stand. That is true, and it is also completely misleading. Two of the fourteen
+joints were being commanded to a position they could not physically reach, so
+they pushed, and kept pushing, and a motor that pushes without moving draws its
+maximum current. The battery sagged because two servos were grinding against a
+wall. I spent four days measuring the sag.
+
+**note.** We were wrong five times before we were right: the battery was too
+weak, the charger was in the wrong mode, the servo horns were seated half a turn
+out, the leg was hitting the body, the servo was mounted backwards in its
+bracket. Every one of those was plausible. Every one had a fix I could have
+spent an evening on. What they had in common — and I did not see it until very
+late — was that they were all the same operation. Reseating a horn, writing an
+offset to the motor's memory, rotating the servo in its mount: all three just
+change which *number* corresponds to which position. They shift. None of them
+can reverse anything.
+
+**worth keeping.** The moment it broke open was not a measurement. It was a
+sentence. I said: *the servos rotate a full three hundred and sixty degrees, so
+reseating the horn does nothing that coding an offset wouldn't.* I meant it as a
+practical objection — why do surgery when I can type. But saying it out loud
+made the real point visible: if every fix on the table is the same relabelling,
+and none of them work, then the defect must be something a label cannot express.
+A sign is exactly that. You can shift a number as far as you like and never
+make it negative.
+
+**note.** The second thing I pushed on was smaller and I was partly wrong about
+it, which I think is worth recording honestly. I said that if the brain browned
+out while the thigh was hanging straight down, then the thigh could not have
+been hitting anything. It turned out the joint was sixteen degrees forward, not
+zero — close enough to vertical that I misjudged it by eye. But the instinct was
+right, and it forced us to stop arguing and build a test that stepped the joint
+two degrees at a time and recorded what it cost. That test is what actually
+settled it. Being wrong about the number and right about the question turns out
+to be a perfectly good way to make progress.
+
+**note.** The final evidence is two runs of the same joint on the same
+afternoon. Commanded the way the software expects, it moved two and a half
+degrees while the force behind it climbed twelvefold and the battery dropped a
+volt. Commanded the opposite way, it travelled thirty-four degrees at a tenth of
+the effort and the battery did not move at all. Then I looked down and the leg
+was standing in a proper crouch, foot flat on the table, exactly the shape a
+duck's leg is supposed to make. Same magnitude, opposite sign, on both legs.
+That is not a worn battery. That is a robot being told to turn the wrong way.
+
+**worth keeping.** On working with an AI on something physical, which is really
+what this whole week was: it was wrong five times in a row, confidently, with
+good reasoning each time. It was also the only reason I got through this at all
+— it built the instruments, it wrote the recorder that survived its own power
+failures, it caught its own bad assumptions when the data came back. The useful
+posture is not trust and it is not suspicion. It is: *make it show you the
+measurement.* Every time I asked for evidence instead of a fix, we moved. Every
+time I accepted a plausible story, we lost a day. That is not a fact about AI.
+That is just how debugging works, and the machine simply made the lesson arrive
+faster and more often than it otherwise would have.
+
+**note.** What I would tell myself on Monday: name the failure after what you
+measured, not after the script it happened inside. I called this a walking
+problem for three days. The duck was never walking. I called it a power problem
+for four. The power was fine. Both names sent me looking in the wrong place, and
+a wrong name is expensive in a way that a wrong guess is not, because you stop
+questioning it.
+
+**moment.** It is very late and the battery is charging. The duck is sitting on
+a cardboard box with its legs hanging over the edge, and tomorrow it will fall
+over in some new and more interesting way. I am not really thinking about the
+walking. I am thinking that a week ago the problem was *this cannot physically
+happen*, and tonight the problem is *this happens badly*. That is a completely
+different kind of problem, and it is the kind you can chip at forever.
