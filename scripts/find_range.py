@@ -155,9 +155,17 @@ for m in a.ids:
     if first[m] is None:
         continue
     for side, val, dwell in (("max", hi[m], dwell_hi[m]), ("min", lo[m], dwell_lo[m])):
-        if abs(val - first[m]) < 2.0:
+        # The encoder resolves about 0.09 deg. A joint resting against its stop
+        # STARTS at that stop, so "extreme == first sample" is the normal case,
+        # not a missed sweep -- pressing on it yields a few tenths of elastic
+        # give and then nothing. Only a value that never moved by even a few
+        # counts means the sweep genuinely never went that way.
+        if abs(val - first[m]) < 0.3:
             unmeasured.append((m, side, val))
-        elif dwell < 10:  # under ~0.5 s at 20 Hz
+        elif dwell < 10 and abs(val - first[m]) > 5.0:
+            # Brief contact far from where it started: possibly a turnaround in
+            # mid-air rather than a stop. Near the start it is just the resting
+            # position, which needs no warning.
             print("  note: %s %s (%.1f) was touched briefly, not leaned on -- "
                   "it may not be the real stop." % (NAMES[m], side, val))
 
