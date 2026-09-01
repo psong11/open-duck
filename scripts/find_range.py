@@ -51,6 +51,8 @@ ap.add_argument("--port", default="/dev/ttyACM0")
 ap.add_argument("--ids", type=int, nargs="+", default=[12, 22])
 ap.add_argument("--secs", type=float, default=30.0)
 ap.add_argument("--config", default=str(pathlib.Path.home() / "duck_config.json"))
+ap.add_argument("--teeth", type=int, default=None,
+                help="splines on the horn; count them and pass it to get teeth instead of degrees")
 a = ap.parse_args()
 
 io = FeetechSTS3215IO(a.port, timeout=0.05)
@@ -111,4 +113,40 @@ for m in a.ids:
 print("-" * 74)
 print("'needs' is where the runtime's init pose commands this joint, offsets applied.")
 print("Anything OUT OF RANGE cannot be reached at any gain, on any battery.")
+
+# Reseating the horn slides this whole window along the reported axis. Which
+# way to turn it depends on bracket handedness, which this script cannot see --
+# but how far, and which way the NUMBERS must move, it can state exactly.
+todo = []
+for m in a.ids:
+    if lo[m] is None:
+        continue
+    want = targets[m]
+    if want > hi[m]:
+        need, direction = want - hi[m], "UP (more positive)"
+    elif want < lo[m]:
+        need, direction = lo[m] - want, "DOWN (more negative)"
+    else:
+        continue
+    todo.append((m, need, direction))
+
+if todo:
+    print("\nTo fix, the reported range must move:")
+    for m, need, direction in todo:
+        margin = need + 15.0  # bare-pass puts the target on the stop; leave room to walk
+        line = "  %-18s %s by at least %.1f deg  (aim for ~%.0f, so it is not sitting on the stop)" % (
+            NAMES[m], direction, need, margin)
+        if a.teeth:
+            per = 360.0 / a.teeth
+            line += "\n  %-18s = %.1f deg/tooth -> %d teeth minimum, %d preferred" % (
+                "", per, math.ceil(need / per), max(1, round(margin / per)))
+        print(line)
+    if not a.teeth:
+        print("\n  Count the splines on the horn and re-run with --teeth N for a tooth count.")
+    print("""
+  Which way to turn the horn is bracket handedness, which this cannot see.
+  Resolve it in one trial: move ONE tooth, re-run this, and read whether the
+  numbers went toward the target or away. That single test gives you the
+  direction AND confirms the degrees-per-tooth.""")
+
 print("\nTorque is still off. These joints are limp.")
