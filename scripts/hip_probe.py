@@ -26,11 +26,13 @@ Support the duck. Torque comes on at low gain and steps in 2 degree increments.
 import argparse
 import json
 import math
+import os
 import pathlib
 import sys
 import time
 
-sys.path.insert(0, "/home/paul")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.expanduser("~"))
 from duck_flightlog import FlightLog  # noqa: E402
 
 from pypot.feetech import FeetechSTS3215IO  # noqa: E402
@@ -48,6 +50,8 @@ ap.add_argument("--past", type=float, default=4.0, help="degrees to try beyond t
 ap.add_argument("--max-load", type=int, default=550, help="abort above this")
 ap.add_argument("--min-volts", type=float, default=6.4, help="abort below this")
 ap.add_argument("--release", action="store_true")
+ap.add_argument("--dry-run", action="store_true",
+                help="read everything and print the plan; never energises a motor")
 ap.add_argument("--config", default=str(pathlib.Path.home() / "duck_config.json"))
 a = ap.parse_args()
 
@@ -80,7 +84,10 @@ def load_of():
         return None
 
 
-start = io.get_present_position([mid])[0]
+try:
+    start = io.get_present_position([mid])[0]
+except Exception as e:
+    raise SystemExit("could not read %s (id %d): %s" % (name, mid, e))
 direction = 1.0 if target > start else -1.0
 end = target + direction * a.past
 
@@ -88,6 +95,18 @@ print("%s (id %d)" % (name, mid))
 print("  now %.1f   target %.1f   probing to %.1f in %.1f deg steps at Kp %d"
       % (start, target, end, a.step, a.kp))
 print("  aborts if load > %d or pack < %.1f V" % (a.max_load, a.min_volts))
+if a.dry_run:
+    g, rows = start, 0
+    while (g - end) * direction < 0:
+        g += direction * a.step
+        rows += 1
+    print("\n  DRY RUN -- nothing energised.")
+    print("  would take %d steps, about %.0f s" % (rows, rows * a.settle))
+    print("  live load now %s, pack %s V" % (load_of(), volts()))
+    print("  torque currently enabled on this joint: %s"
+          % io.is_torque_enabled([mid])[0])
+    raise SystemExit(0)
+
 print("\n  WATCH THE THIGH. If it stops following, look at what is touching it.")
 if not input("\nSupport the duck. Proceed? (y/N) ").lower().startswith("y"):
     raise SystemExit("aborted; nothing moved")
