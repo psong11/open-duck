@@ -47,6 +47,8 @@ ap.add_argument("--kp", type=int, default=8)
 ap.add_argument("--step", type=float, default=2.0)
 ap.add_argument("--settle", type=float, default=1.2, help="seconds per step")
 ap.add_argument("--past", type=float, default=4.0, help="degrees to try beyond target")
+ap.add_argument("--goal", type=float, default=None,
+                help="probe toward this angle instead of the init target -- use it to test whether the direction convention is inverted, e.g. --goal -36.4")
 ap.add_argument("--max-load", type=int, default=550, help="abort above this")
 ap.add_argument("--min-volts", type=float, default=6.4, help="abort below this")
 ap.add_argument("--release", action="store_true")
@@ -67,6 +69,8 @@ if a.release:
 cfg = json.loads(pathlib.Path(a.config).read_text())
 offsets = cfg["joints_offsets" if "joints_offsets" in cfg else "joints_offset"]
 target = math.degrees(INIT[name]) + math.degrees(offsets.get(name, 0.0))
+if a.goal is not None:
+    target = a.goal
 
 
 def volts():
