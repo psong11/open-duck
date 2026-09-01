@@ -16,12 +16,19 @@ set -uo pipefail
 
 PY="${PY:-$HOME/miniforge3/envs/duck/bin/python}"
 ONNX="${ONNX:-$HOME/BEST_WALK_ONNX_2.onnx}"
-WALK="$HOME/Open_Duck_Mini_Runtime/scripts/v2_rl_walk_mujoco.py"
+WALK_DIR="$HOME/Open_Duck_Mini_Runtime/scripts"
+WALK="$WALK_DIR/v2_rl_walk_mujoco.py"
 LABEL="${LABEL:-walk}"
 
 [ -x "$PY" ]    || { echo "no python at $PY" >&2; exit 1; }
 [ -f "$ONNX" ]  || { echo "no policy at $ONNX" >&2; exit 1; }
 [ -f "$WALK" ]  || { echo "no walk script at $WALK" >&2; exit 1; }
+# The runtime loads ./polynomial_coefficients.pkl by a RELATIVE path, so it
+# only works from its own directory. Running it from anywhere else gets you
+# through torque-on and the init pose before it dies on a missing file.
+[ -f "$WALK_DIR/polynomial_coefficients.pkl" ] || {
+  echo "no polynomial_coefficients.pkl in $WALK_DIR" >&2; exit 1; }
+cd "$WALK_DIR" || exit 1
 
 echo "== pack voltage before =="
 "$PY" - <<'PY'
@@ -44,6 +51,7 @@ trap cleanup EXIT INT TERM
 sleep 1  # let the watcher land a few baseline samples before torque comes on
 
 echo "== walking =="
+# cwd is $WALK_DIR, set above, because of that relative path
 "$PY" -u "$WALK" --onnx_model_path "$ONNX" "$@"
 rc=$?
 
