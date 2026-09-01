@@ -108,10 +108,18 @@ print("pack at rest: %s V   Kp %d   %.1fs   %s"
 if not input("\nSupport the duck. Proceed? (y/N) ").lower().startswith("y"):
     raise SystemExit("aborted; nothing moved")
 
+# Who is actually carrying the robot? Twelve joints read near-zero load in the
+# first run while two stalled, which is either the real force distribution or
+# an artifact of the duck hanging in the air. Logging per-joint error and load
+# through the move settles it without another session.
+PROBE = [12, 22, 13, 23, 14, 24]  # hip pitches, knees, ankles
+PROBE_NAMES = "hipP_R|hipP_L|knee_R|knee_L|ankl_R|ankl_L"
+
 fl = FlightLog(
     "~/walklogs/slew-%s.csv" % time.strftime("%Y%m%d-%H%M%S"),
-    fields=("group", "frac", "v", "v_min", "max_travel_deg"),
+    fields=("group", "frac", "v", "v_min", "max_travel_deg", "err_deg", "load"),
 ).start()
+fl.mark("probe order " + PROBE_NAMES)
 fl.mark("kp=%d secs=%.1f hz=%.1f groups=%s biggest=%.0fdeg"
         % (a.kp, a.secs, a.hz, a.groups, biggest))
 print("log -> %s" % fl.path)
@@ -144,9 +152,29 @@ try:
             v = pack_v()
             if v is not None and (vmin is None or v < vmin):
                 vmin = v
+
+            # commanded vs reached, and what it cost, for the six leg joints
+            try:
+                pres = io.get_present_position(PROBE)
+                load = io.get_present_load(PROBE)
+            except Exception:
+                pres, load = None, None
+            if pres is None:
+                errs = loads = ""
+            else:
+                want = {}
+                for m2 in members:
+                    want[JOINTS[m2]] = start_deg[m2] + (target_deg[m2] - start_deg[m2]) * f
+                errs = "|".join(
+                    "%.1f" % (want[pid] - pres[k]) if pid in want else ""
+                    for k, pid in enumerate(PROBE)
+                )
+                # sign-magnitude: bit 10 is direction, magnitude is value & 0x3FF
+                loads = "|".join(str(int(x) & 0x3FF) for x in load)
+
             n += 1
             fl.sample(n, group=gname, frac=round(f, 3), v=v, v_min=vmin,
-                      max_travel_deg=round(travel, 1))
+                      max_travel_deg=round(travel, 1), err_deg=errs, load=loads)
             time.sleep(max(0.0, 1.0 / a.hz))
         print("  %-10s done   min %sV" % (gname, vmin), flush=True)
 
