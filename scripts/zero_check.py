@@ -14,10 +14,11 @@ explanations fit that equally well and they need opposite fixes:
 Relabelling cannot move a stop. So the deciding question is where the pose sits
 relative to the arc, and that needs a reference the firmware cannot fake.
 
-Hip pitch zero has a physical definition: the thigh in line with the torso, the
-pose the duck stands in with a straight leg. Hold it there, read what the servo
-claims, and the discrepancy is the label error -- measured against the robot
-instead of against its own configuration.
+Hip pitch zero has a physical definition: the thigh PARALLEL to the torso and
+pointing straight down, the pose the duck stands in with a fully extended leg.
+(Perpendicular -- a horizontal thigh -- is the sitting pose, near 90.) Hold it
+there, read what the servo claims, and the discrepancy is the label error,
+measured against the robot instead of against its own configuration.
 
     python zero_check.py                 # uses the arc from the last find_range
     python zero_check.py --arc12 -136.0 15.1 --arc22 -18.0 138.1
@@ -63,8 +64,12 @@ for mid in (12, 22):
     name = NAMES[mid]
     side = name.split("_")[0]
     print("\n--- %s (id %d) ---" % (name, mid))
-    print("Hold the %s thigh IN LINE WITH THE TORSO -- straight leg, as if the" % side)
-    print("duck were standing bolt upright. Steady, not forced against anything.")
+    print("Hold the %s thigh PARALLEL to the torso -- pointing straight DOWN," % side)
+    print("leg fully extended, like a soldier at attention. Not perpendicular:")
+    print("a horizontal thigh is the sitting pose, which is about 90, not 0.")
+    print("Sight it against something you trust to be vertical (a box edge, a")
+    print("door frame), or lay a phone level flat on the thigh. A couple of")
+    print("degrees is close enough. Steady, and not forced against a stop.")
     input("Press Enter while holding it there... ")
     samples = []
     for _ in range(20):
