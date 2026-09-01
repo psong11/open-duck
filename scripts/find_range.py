@@ -26,9 +26,14 @@ The legs go limp the moment this starts. Support them.
 import argparse
 import json
 import math
+import os
 import pathlib
 import sys
 import time
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.expanduser("~"))
+from duck_flightlog import FlightLog  # noqa: E402
 
 from pypot.feetech import FeetechSTS3215IO
 
@@ -72,20 +77,46 @@ if not input("Ready? (y/N) ").lower().startswith("y"):
 io.disable_torque(a.ids)
 time.sleep(0.3)
 
+# Record the whole sweep, not just the extremes. A min/max pair cannot tell a
+# firm push into a hard stop from a tentative wiggle that stopped early, and
+# everything downstream rests on which of those happened.
+fl = FlightLog(
+    "~/walklogs/range-%s.csv" % time.strftime("%Y%m%d-%H%M%S"),
+    fields=tuple("id%d" % m for m in a.ids),
+).start()
+fl.mark("sweep ids " + ",".join(str(m) for m in a.ids))
+print("trace -> %s" % fl.path)
+
 lo = {m: None for m in a.ids}
 hi = {m: None for m in a.ids}
+first = {m: None for m in a.ids}
+dwell_lo = {m: 0 for m in a.ids}
+dwell_hi = {m: 0 for m in a.ids}
+n = 0
 print("\nSweep each joint slowly to BOTH of its stops. %.0f seconds.\n" % a.secs)
 
 t0 = time.time()
 try:
     while time.time() - t0 < a.secs:
+        seen = {}
         for m in a.ids:
             try:
                 p = io.get_present_position([m])[0]
             except Exception:
                 continue
+            seen["id%d" % m] = round(p, 2)
+            if first[m] is None:
+                first[m] = p
             lo[m] = p if lo[m] is None else min(lo[m], p)
             hi[m] = p if hi[m] is None else max(hi[m], p)
+            # Time spent parked against an extreme. A real stop gets leaned on;
+            # a turnaround in mid-air does not.
+            if abs(p - lo[m]) < 1.0:
+                dwell_lo[m] += 1
+            if abs(p - hi[m]) < 1.0:
+                dwell_hi[m] += 1
+        n += 1
+        fl.sample(n, **seen)
         left = a.secs - (time.time() - t0)
         cells = "  ".join(
             "%s %7.1f .. %6.1f" % (m, lo[m] if lo[m] is not None else 0,
@@ -96,6 +127,8 @@ try:
         time.sleep(0.05)
 except KeyboardInterrupt:
     print()
+finally:
+    fl.close("swept")
 
 print("\n\n%-18s %9s %9s %9s %9s   %s" % ("joint", "min", "max", "span", "needs", "verdict"))
 print("-" * 74)
@@ -113,6 +146,30 @@ for m in a.ids:
 print("-" * 74)
 print("'needs' is where the runtime's init pose commands this joint, offsets applied.")
 print("Anything OUT OF RANGE cannot be reached at any gain, on any battery.")
+
+# An extreme that never moved off the starting position is not a measurement.
+# The sweep simply never went that way, and reporting it as a limit would
+# invent a wall out of where the leg happened to be resting.
+unmeasured = []
+for m in a.ids:
+    if first[m] is None:
+        continue
+    for side, val, dwell in (("max", hi[m], dwell_hi[m]), ("min", lo[m], dwell_lo[m])):
+        if abs(val - first[m]) < 2.0:
+            unmeasured.append((m, side, val))
+        elif dwell < 10:  # under ~0.5 s at 20 Hz
+            print("  note: %s %s (%.1f) was touched briefly, not leaned on -- "
+                  "it may not be the real stop." % (NAMES[m], side, val))
+
+if unmeasured:
+    print("\n" + "!" * 74)
+    print("INCOMPLETE SWEEP -- these ends were never explored:")
+    for m, side, val in unmeasured:
+        print("  %-18s %s = %.1f is just where it started. You did not move it that way."
+              % (NAMES[m], side, val))
+    print("Re-sweep and push BOTH directions to a firm stop before trusting any")
+    print("verdict above. Make sure nothing the duck is resting on is in the way.")
+    print("!" * 74)
 
 # Reseating the horn slides this whole window along the reported axis. Which
 # way to turn it depends on bracket handedness, which this script cannot see --
