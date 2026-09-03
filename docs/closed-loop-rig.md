@@ -1,7 +1,10 @@
 # The self-observing test rig
 
-*Proposal, 2026-09-02. Status: not started. Every phase below is priced in
-testing sessions, because that is the currency that matters.*
+*2026-09-02. Phase 0 SHIPPED (disarmed); phases 1-4 proposed. Every phase
+below is priced in testing sessions, because that is the currency that
+matters.*
+
+Diagrams: https://claude.ai/code/artifact/e9ed1e23-892a-45d3-a5eb-857281dd7388
 
 ## The pitch
 
@@ -137,26 +140,53 @@ telemetry at that instant (pack voltage, `dt_max`, `lcrit`). One image, one
 Later, the same script overlays the flight-log series on the frame timeline —
 the sag curve with a video thumbnail at the moment it dips.
 
-### Fall detection — the IMU check on the Pi
+### Fall detection — the IMU check on the Pi  [SHIPPED 2026-09-02]
 
-In the control loop, from the accelerometer already being read:
+The first sketch assumed "up" is the +Z axis:
 
 ```python
 g = imu_data["accelero"]
-tilt = degrees(acos(clip(g[2] / norm(g), -1, 1)))   # 0 = upright
-if tilt > FALL_DEG:  fl.mark("fall"); break          # finally: does turn_off()
+tilt = degrees(acos(clip(g[2] / norm(g), -1, 1)))   # 0 = upright  <- WRONG
+if tilt > FALL_DEG:  fl.mark("fall"); break
 ```
 
-Shipped in **shadow mode first**: it marks the log but does not act. After a
-few runs, compare its marks to the video. Arm it only once it has never
-fired on a run that was actually upright. A detector that kills good runs is
-worse than no detector.
+Measuring first killed that. Standing still, ezer's gravity vector reads
+`(-5.14, 1.22, 8.23)` — **32.7 deg away from +Z**, because the IMU is not
+mounted square and she stands in a crouch. Against a 50 deg trigger that
+leaves 17 deg of margin for a robot doing nothing wrong. The four-line
+version would have fired on a duck standing perfectly still.
+
+So the shipped version takes a **reference pose** (`fall_check.py --tare`)
+instead of assuming one, and **disables itself loudly** when no reference
+exists rather than guessing. A missing tare means the walk behaves exactly
+as it did before.
+
+Two more gates keep it from killing good runs. Gravity has to dominate: a
+walking robot accelerates itself, and during a hard footfall the vector does
+not point at the floor, so samples outside a band around 9.81 are discarded.
+And the tilt has to *persist* — eight consecutive valid samples, with a latch
+that releases only below 35 deg, so a duck hovering at the threshold reports
+once instead of forty times.
+
+It ships in **shadow mode**: it marks the log and does not act. Only
+`DUCK_FALL_ARM=1` stops the walk.
+
+    scripts/duck_fall.py    FallWatch: gravity gate + debounce + latch
+    scripts/fall_check.py   bench tool, read-only. --tare captures the ref
+    scripts/test_fall.py    16 synthetic checks
+
+Verified against the live IMU: silent for 60 ticks at the tared pose, fires
+on tick 3 of an injected 90 deg topple, mark lands in the flight log.
+Backup of the pre-patch walk script: `v2_rl_walk_mujoco.py.prefall`.
+
+**Still outstanding: one tare with her standing properly.** Until then the
+detector prints that it is disabled and does nothing.
 
 ## Phases — each priced in sessions
 
 | phase | what ships | validated by | session cost |
 |---|---|---|---|
-| **0 — Protect** | IMU fall check, shadow mode, in the walk script | torque off, tilt the duck by hand, watch the mark fire | **0** — no walk needed |
+| **0 — Protect** | **DONE** — IMU fall check, shadow mode, in the walk script | 16 synthetic checks + live IMU integration test | **0** — none used |
 | **1 — Record** | `/rec/*` in `liveview.py`; bracket in `run_walk.sh` | point the camera at anything; then it rides on the next walk you were doing anyway | **0** extra |
 | **2 — Read** | `read_run.sh` → contact sheet | the recordings phase 1 already made | **0** |
 | **3 — Arm** | fall check flips from mark to act | the shadow-mode marks vs the video, from runs already recorded | **0** extra |
@@ -202,6 +232,7 @@ Yes, and most of it exists:
 | fsynced flight recorder with event marks | **built** — `duck_flightlog.py`, `fl.mark()` already in the walk script |
 | 20 Hz power watcher | **built** — `powerwatch.py` |
 | IMU gravity vector in the control loop | **built** — it is already in the observation |
+| Fall detector, bench tool, tests | **built** — `duck_fall.py`, `fall_check.py`, `test_fall.py` |
 | Policy observation recorder | **built upstream** — `--save_obs` |
 | Log puller on the Mac | **built** — `read_walklog.sh`, to be extended |
 
