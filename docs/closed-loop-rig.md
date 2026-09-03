@@ -150,22 +150,37 @@ tilt = degrees(acos(clip(g[2] / norm(g), -1, 1)))   # 0 = upright  <- WRONG
 if tilt > FALL_DEG:  fl.mark("fall"); break
 ```
 
-Measuring first killed that. Standing still, ezer's gravity vector reads
-`(-5.14, 1.22, 8.23)` — **32.7 deg away from +Z**, because the IMU is not
-mounted square and she stands in a crouch. Against a 50 deg trigger that
-leaves 17 deg of margin for a robot doing nothing wrong. The four-line
-version would have fired on a duck standing perfectly still.
+Measuring first killed that. The IMU sits in the **torso**, it is not mounted
+square, and -- the part that matters -- **her torso is pitched forward on
+purpose**. The lean is what the gait is built around, not a symptom. A
+detector that treats tilt as trouble would fight the design.
 
-So the shipped version takes a **reference pose** (`fall_check.py --tare`)
-instead of assuming one, and **disables itself loudly** when no reference
-exists rather than guessing. A missing tare means the walk behaves exactly
-as it did before.
+So "a fall" means TOTAL COLLAPSE, not tilt. Flat on the floor is ~90 deg from
+the reference, so the trigger sits at 65 deg with a 45 deg release: clear of
+any honest stride, still early enough to catch her before she ploughs her
+face along the carpet. Every one of those numbers is a placeholder -- shadow
+mode writes `tilt_max` to the flight log every 100 ms, so the first real walk
+says what she actually reaches upright, and the threshold gets set from that.
+
+So the shipped version takes a **reference pose** instead of assuming one,
+and **disables itself loudly** when no reference exists rather than guessing.
+A missing tare means the walk behaves exactly as it did before.
+
+The tare must be taken with the servos **holding the init crouch**:
+
+    python slew_to_init.py           # moves there, exits STILL HOLDING
+    python fall_check.py --tare      # only touches the I2C IMU, not the bus
+    python slew_to_init.py --release
+
+A limp duck slumped on the bench sits at a different torso angle entirely.
+The first tare (2026-09-02) caught exactly that mistake -- all 14 servos
+unpowered, hips 50 deg off init, knees 22 deg -- and was set aside.
 
 Two more gates keep it from killing good runs. Gravity has to dominate: a
 walking robot accelerates itself, and during a hard footfall the vector does
 not point at the floor, so samples outside a band around 9.81 are discarded.
 And the tilt has to *persist* — eight consecutive valid samples, with a latch
-that releases only below 35 deg, so a duck hovering at the threshold reports
+that releases only below 45 deg, so a duck hovering at the threshold reports
 once instead of forty times.
 
 It ships in **shadow mode**: it marks the log and does not act. Only
@@ -173,7 +188,7 @@ It ships in **shadow mode**: it marks the log and does not act. Only
 
     scripts/duck_fall.py    FallWatch: gravity gate + debounce + latch
     scripts/fall_check.py   bench tool, read-only. --tare captures the ref
-    scripts/test_fall.py    16 synthetic checks
+    scripts/test_fall.py    18 synthetic checks
 
 Verified against the live IMU: silent for 60 ticks at the tared pose, fires
 on tick 3 of an injected 90 deg topple, mark lands in the flight log.
@@ -186,7 +201,7 @@ detector prints that it is disabled and does nothing.
 
 | phase | what ships | validated by | session cost |
 |---|---|---|---|
-| **0 — Protect** | **DONE** — IMU fall check, shadow mode, in the walk script | 16 synthetic checks + live IMU integration test | **0** — none used |
+| **0 — Protect** | **DONE** — IMU fall check, shadow mode, in the walk script | 18 synthetic checks + live IMU integration test | **0** — none used |
 | **1 — Record** | `/rec/*` in `liveview.py`; bracket in `run_walk.sh` | point the camera at anything; then it rides on the next walk you were doing anyway | **0** extra |
 | **2 — Read** | `read_run.sh` → contact sheet | the recordings phase 1 already made | **0** |
 | **3 — Arm** | fall check flips from mark to act | the shadow-mode marks vs the video, from runs already recorded | **0** extra |
