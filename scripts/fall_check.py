@@ -19,11 +19,22 @@ HOW TILT IS DEFINED
     tilt. 0 = as she stands, 90 = on her side, 180 = upside down.
 
     By default the reference is +Z, because with imu_upside_down=true the board
-    reads about +9.8 on Z when she is upright. But the IMU is not mounted
-    perfectly square and she stands in a crouch, so her true resting tilt may
-    be several degrees off zero. --tare measures the real reference and writes
-    fall_reference.json; after that, "0" means "exactly how she was standing
-    when you tared", which is the number we actually want.
+    reads about +9.8 on Z when she is upright. That default is only a fallback
+    for reading raw numbers -- it is NOT good enough to detect a fall with. The
+    IMU sits in the torso, it is not mounted square, and her torso is pitched
+    forward on purpose because the gait is built around that lean. --tare
+    measures the real thing and writes fall_reference.json; after that, "0"
+    means "exactly the attitude she walks at", which is what we want.
+
+    TARE HER IN THE INIT CROUCH, WITH TORQUE ON:
+
+        python slew_to_init.py       # moves to the crouch, exits still holding
+        python fall_check.py --tare  # then this
+        python slew_to_init.py --release
+
+    A limp duck slumped on the bench is a different torso angle entirely --
+    measured on 2026-09-02: hips 50 deg off init, knees 22 deg off. Taring
+    that pose bakes the error into every reading afterwards.
 
 WHY |a| IS ON THE SCREEN
     This trick only works while gravity dominates the reading. A walking robot
@@ -94,7 +105,8 @@ def main():
     time.sleep(0.5)  # let the worker thread land a sample
 
     if args.tare:
-        print(f"\nHold her exactly as she should stand. Averaging {args.seconds}s...")
+        print(f"\nShe must be HOLDING THE INIT CROUCH (torque on), not limp.")
+        print(f"Averaging {args.seconds}s...")
         acc = []
         t0 = time.time()
         while time.time() - t0 < args.seconds:

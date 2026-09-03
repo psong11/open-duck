@@ -82,6 +82,8 @@ check("tilt untouched by bad samples", w.tilt, 0.0)
 
 print("\n8. armed flag comes from the environment")
 check("shadow by default", mk().armed, False)
+check("default trigger is collapse-only", mk().deg, 65.0)
+check("default release", mk().rel, 45.0)
 check("armed when asked", mk(DUCK_FALL_ARM=1).armed, True)
 w = mk(DUCK_FALL_ARM=0, DUCK_FALL_DEG=50, DUCK_FALL_TICKS=2)
 for _ in range(2): w.update(vec_at(70))
@@ -93,10 +95,15 @@ w.update(vec_at(5)); w.update(vec_at(41)); w.update(vec_at(5))
 check("peak captured", w.take_max(), 41.0)
 check("resets to current", w.take_max(), round(w.tilt,1))
 
-print("\n10. the real-world number: threshold vs a naive +Z reference")
+print("\n10. a total collapse must clear the trigger with margin")
+w = mk(DUCK_FALL_TICKS=8)          # 65 deg default
+for _ in range(8): w.update(vec_at(90))   # flat on the floor
+check("90 deg collapse fires at the default", w.poll() is not None, True)
+w = mk(DUCK_FALL_TICKS=8)
+for _ in range(60): w.update(vec_at(30))  # a deep but honest forward lean
+check("30 deg lean stays silent", w.poll(), None)
 naive = np.degrees(np.arccos(np.dot(REST_HAT, [0,0,1])))
-print(f"     resting pose is {naive:.1f} deg from +Z")
-check("naive +Z would sit dangerously near a 50 deg trigger", naive > 30, True)
+print(f"     a slumped/limp pose read {naive:.1f} deg from +Z")
 
 print("\n" + ("ALL PASS" if not fails else f"{len(fails)} FAILED: {fails}"))
 sys.exit(1 if fails else 0)

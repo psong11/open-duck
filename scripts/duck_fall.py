@@ -7,6 +7,17 @@ the whole detector.
 
     tilt = angle(accelero, reference)     0 = as tared, 90 = on her side
 
+WHAT COUNTS AS A FALL
+    The IMU sits in the TORSO, and her torso is *deliberately* pitched forward
+    when she walks -- that lean is part of the gait, not a symptom. So the
+    reference is her walking attitude (tare her in the init crouch), and the
+    trigger is set for a TOTAL COLLAPSE, not a lean. A duck flat on the floor
+    is ~90 deg from the reference; the default 65 deg fires well clear of any
+    honest stride while still catching a collapse before she grinds her face
+    along the carpet. Shadow mode logs tilt_max every 100 ms, so the first real
+    walk tells us what she actually reaches upright -- set the threshold from
+    that number, not from this guess.
+
 TWO THINGS KEEP THIS FROM KILLING GOOD RUNS
 
 1. Gravity has to dominate. A walking robot accelerates itself, and during a
@@ -26,16 +37,21 @@ DISARMED BY DEFAULT
 
 REQUIRES A TARE
     Without ~/fall_reference.json there is no reference pose, and a guessed
-    one is worse than none: on this robot the resting pose sits 32.7 deg away
-    from a naive "+Z is up" assumption, so a 45 deg threshold against +Z
-    would trip on a duck standing perfectly still. Missing file = disabled,
-    loudly, and the walk runs exactly as it did before.
+    one is worse than none: a naive "+Z is up" assumption ignores both the
+    IMU's mounting angle and the forward lean the gait is built around.
+    Missing file = disabled, loudly, and the walk runs exactly as before.
 
-        python fall_check.py --tare      # hold her standing, once
+    The tare must be taken with the SERVOS HOLDING THE INIT CROUCH. A limp
+    duck slumped on the bench has her torso at a completely different angle
+    -- measured: hips 50 deg off init, knees 22 deg off -- and taring that
+    pose bakes the error into every later reading.
+
+        python slew_to_init.py           # torque on, holds the crouch
+        python fall_check.py --tare      # then, once
 
 ENV
-    DUCK_FALL_DEG    trigger angle, default 50
-    DUCK_FALL_REL    release angle for the latch, default 35
+    DUCK_FALL_DEG    trigger angle, default 65 (collapse, not lean)
+    DUCK_FALL_REL    release angle for the latch, default 45
     DUCK_FALL_TICKS  consecutive valid samples required, default 8 (~0.16 s)
     DUCK_FALL_ARM    1 to actually stop the walk, default 0 (shadow)
 """
@@ -54,8 +70,8 @@ G_LO, G_HI = 7.5, 12.0
 
 class FallWatch:
     def __init__(self):
-        self.deg = float(os.environ.get("DUCK_FALL_DEG", 50.0))
-        self.rel = float(os.environ.get("DUCK_FALL_REL", 35.0))
+        self.deg = float(os.environ.get("DUCK_FALL_DEG", 65.0))
+        self.rel = float(os.environ.get("DUCK_FALL_REL", 45.0))
         self.ticks = int(os.environ.get("DUCK_FALL_TICKS", 8))
         self.armed = os.environ.get("DUCK_FALL_ARM", "0") == "1"
 
